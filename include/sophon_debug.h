@@ -38,7 +38,7 @@ extern "C" {
 
 #include "sophon_types.h"
 
-#if defined(SOPHON_HAVE_ASSERT) && defined(SOPHON_DEBUG_INFO)
+#if defined(SOPHON_HAVE_ASSERT) && defined(SOPHON_DEBUG)
 	#define SOPHON_ASSERT(a) assert(a)
 #else
 	#define SOPHON_ASSERT(a)

@@ -44,9 +44,11 @@ gc_scan_object (Sophon_VM *vm, Sophon_Object *obj)
 				Sophon_AccessorProperty *aprop =
 						(Sophon_AccessorProperty*)prop;
 
+				gc_mark(vm, (Sophon_GCObject*)aprop->name);
 				sophon_value_mark(vm, aprop->getv);
 				sophon_value_mark(vm, aprop->setv);
 			} else {
+				gc_mark(vm, (Sophon_GCObject*)prop->name);
 				sophon_value_mark(vm, prop->value);
 			}
 

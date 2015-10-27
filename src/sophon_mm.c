@@ -88,13 +88,67 @@ sophon_mm_dump_unfreed ()
 	sophon_prerr("unfreed buffers:\n");
 
 	for (m = mm_used.next; m != &mm_used; m = m->next) {
-		sophon_prerr("\t%p \"%s\" %d size:%d\n", m + 1, m->file, m->line, m->size);
+		Sophon_U8 *buf = (Sophon_U8*)(m + 1);
+		Sophon_Int i;
+
+		sophon_prerr("\t%p \"%s\" %d size:%d ", m + 1, m->file,
+					m->line, m->size);
+
+		sophon_prerr("[");
+
+		for (i = 0; i < SOPHON_MIN(m->size, 16); i++) {
+			sophon_prerr("%02x ", buf[i]);
+		}
+
+		sophon_prerr("]\n");
+	}
+}
+
+void
+sophon_mm_check_all ()
+{
+	MMHead *m;
+	Sophon_Bool err = SOPHON_FALSE;
+
+	for (m = mm_used.next; m != &mm_used; m = m->next) {
+		Sophon_U8 *buf = (Sophon_U8*)(m + 1);
+		MMTail *t = (MMTail*)(buf + m->size);
+		Sophon_Int i;
+
+		if ((m->magic != MM_MAGIC) || (t->magic != MM_MAGIC)) {
+			sophon_prerr("\t%p write overflow \"%s\" %d size:%d ", m + 1,
+						m->file, m->line, m->size);
+			sophon_prerr("[");
+
+			for (i = 0; i < SOPHON_MIN(m->size, 16); i++) {
+				sophon_prerr("%02x ", buf[i]);
+			}
+
+			sophon_prerr("]\n");
+			sophon_prerr("\t\thead: %08x tail: %08x\n", m->magic, t->magic);
+			err = SOPHON_TRUE;
+		}
+	}
+
+	if (err)
+		sophon_fatal("memory write overflow");
+}
+
+void
+sophon_mm_check_ptr (Sophon_Ptr ptr, Sophon_U32 size)
+{
+	MMHead *head = ((MMHead*)ptr) - 1;
+	MMTail *tail = (MMTail*)(((char*)ptr) + size);
+
+	if ((head->magic != MM_MAGIC) && (tail->magic != MM_MAGIC)) {
+		sophon_fatal("invalid buffer %p (head:%08x tail:%08x)",
+				ptr, head->magic, tail->magic);
 	}
 }
 
 Sophon_Ptr
 sophon_mm_realloc_real (Sophon_VM *vm, Sophon_Ptr old_ptr, Sophon_U32 old_size,
-		Sophon_U32 new_size, const char *file, int line)
+			Sophon_U32 new_size, const char *file, int line)
 {
 	Sophon_Ptr ptr;
 	Sophon_U32 real_new_size, real_old_size;
@@ -115,8 +169,10 @@ sophon_mm_realloc_real (Sophon_VM *vm, Sophon_Ptr old_ptr, Sophon_U32 old_size,
 		MMTail *tail = (MMTail*)(((char*)old_ptr) + old_size);
 
 		if ((head->magic != MM_MAGIC) && (tail->magic != MM_MAGIC)) {
-			sophon_fatal("\"%s\" %d: free an invalid buffer %p",
-						file, line, old_ptr);
+			sophon_fatal("\"%s\" %d: free an invalid buffer %p "
+					"(head:%08x tail:%08x)",
+					file, line, old_ptr,
+					head->magic, tail->magic);
 		}
 
 		if (old_size != head->size) {
@@ -159,9 +215,10 @@ sophon_mm_realloc_real (Sophon_VM *vm, Sophon_Ptr old_ptr, Sophon_U32 old_size,
 
 #endif /*SOPHON_MM_DEBUG*/
 
+#ifndef SOPHON_MM_DEBUG
 Sophon_Ptr
 sophon_mm_realloc_ensure (Sophon_VM *vm, Sophon_Ptr old_ptr,
-						Sophon_U32 old_size, Sophon_U32 new_size)
+			Sophon_U32 old_size, Sophon_U32 new_size)
 {
 	Sophon_Ptr ptr;
 
@@ -171,4 +228,20 @@ sophon_mm_realloc_ensure (Sophon_VM *vm, Sophon_Ptr old_ptr,
 
 	return ptr;
 }
+#else /*defined(SOPHON_MM_DEBUG)*/
+Sophon_Ptr
+sophon_mm_realloc_ensure_real (Sophon_VM *vm, Sophon_Ptr old_ptr,
+			Sophon_U32 old_size, Sophon_U32 new_size,
+			const char *file, int line)
+{
+	Sophon_Ptr ptr;
+
+	ptr = sophon_mm_realloc_real(vm, old_ptr, old_size, new_size,
+				file, line);
+	if (!ptr && new_size)
+		sophon_nomem();
+
+	return ptr;
+}
+#endif /*SOPHON_MM_DEBUG*/
 

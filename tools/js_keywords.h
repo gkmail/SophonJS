@@ -29,38 +29,54 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.               *
  *****************************************************************************/
 
-#ifndef _SOPHON_DOUBLE_POOL_H_
-#define _SOPHON_DOUBLE_POOL_H_
+#ifndef _JS_KEYWORDS_H_
+#define _JS_KEYWORDS_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "sophon_value.h"
-
-typedef struct Sophon_DoubleEntry_s Sophon_DoubleEntry;
-struct Sophon_DoubleEntry_s {
-	Sophon_DoubleEntry *next;
-};
-
-typedef struct Sophon_DoublePool_s Sophon_DoublePool;
-struct Sophon_DoublePool_s {
-	Sophon_DoublePool  *next;
-	Sophon_U32         *used_flags;
-	Sophon_U32         *mark_flags;
-	Sophon_DoubleEntry *free_list;
-	Sophon_Double      *entries;
-	Sophon_U32          free_count;
-};
-
-extern void sophon_double_pool_init (Sophon_VM *vm);
-extern void sophon_double_pool_deinit (Sophon_VM *vm);
-extern void sophon_double_pool_sweep (Sophon_VM *vm);
-extern void sophon_double_mark (Sophon_VM *vm,
-						Sophon_Value v);
-extern void sophon_value_set_double_real (Sophon_VM *vm,
-						Sophon_Value *v,
-						Sophon_Double d);
+#define FOR_EACH_KEYWORD(t) \
+	t(null)\
+	t(true)\
+	t(false)\
+	t(break)\
+	t(do)\
+	t(in)\
+	t(typeof)\
+	t(case)\
+	t(else)\
+	t(instanceof)\
+	t(var)\
+	t(catch)\
+	t(export)\
+	t(new)\
+	t(void)\
+	t(class)\
+	t(extends)\
+	t(return)\
+	t(while)\
+	t(const)\
+	t(finally)\
+	t(super)\
+	t(with)\
+	t(continue)\
+	t(for)\
+	t(switch)\
+	t(yield)\
+	t(debugger)\
+	t(function)\
+	t(this)\
+	t(default)\
+	t(if)\
+	t(throw)\
+	t(delete)\
+	t(import)\
+	t(try)\
+	t(enum)\
+	t(await)\
+	t(get)\
+	t(set)
 
 #ifdef __cplusplus
 }

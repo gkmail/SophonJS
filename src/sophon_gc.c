@@ -36,7 +36,17 @@
 #include <sophon_gc.h>
 #include <sophon_string.h>
 #include <sophon_object.h>
+#include <sophon_frame.h>
+#include <sophon_function.h>
+#include <sophon_stack.h>
+#include <sophon_closure.h>
+#include <sophon_module.h>
+#include <sophon_array.h>
+#include <sophon_arguments.h>
+#include <sophon_regexp.h>
 #include <sophon_debug.h>
+
+#include "sophon_parser_internal.h"
 
 #ifndef SOPHON_GC_START_SIZE
 	#define SOPHON_GC_START_SIZE (32*1024)
@@ -85,11 +95,35 @@ static void
 gc_final (Sophon_VM *vm, Sophon_GCObject *obj)
 {
 	switch (obj->gc_type) {
-		case SOPHON_GC_STRING:
+		case SOPHON_GC_String:
 			sophon_string_destroy(vm, (Sophon_String*)obj);
 			break;
-		case SOPHON_GC_OBJECT:
+		case SOPHON_GC_Object:
 			sophon_object_destroy(vm, (Sophon_Object*)obj);
+			break;
+		case SOPHON_GC_GlobalFrame:
+			sophon_global_frame_destroy(vm, (Sophon_GlobalFrame*)obj);
+			break;
+		case SOPHON_GC_DeclFrame:
+			sophon_decl_frame_destroy(vm, (Sophon_DeclFrame*)obj);
+			break;
+		case SOPHON_GC_CatchFrame:
+			sophon_catch_frame_destroy(vm, (Sophon_CatchFrame*)obj);
+			break;
+		case SOPHON_GC_WithFrame:
+			sophon_with_frame_destroy(vm, (Sophon_WithFrame*)obj);
+			break;
+		case SOPHON_GC_Closure:
+			sophon_closure_destroy(vm, (Sophon_Closure*)obj);
+			break;
+		case SOPHON_GC_Module:
+			sophon_module_destroy(vm, (Sophon_Module*)obj);
+			break;
+		case SOPHON_GC_Array:
+			sophon_array_destroy(vm, (Sophon_Array*)obj);
+			break;
+		case SOPHON_GC_RegExp:
+			sophon_regexp_destroy(vm, (Sophon_RegExp*)obj);
 			break;
 	}
 }
@@ -111,16 +145,47 @@ gc_mark (Sophon_VM *vm, Sophon_GCObject *obj)
 	obj->gc_flags |= SOPHON_GC_FL_MARKED;
 }
 
-#include "sophon_gc_vm.c"
 #include "sophon_gc_object.c"
+#include "sophon_gc_function.c"
+#include "sophon_gc_frame.c"
+#include "sophon_gc_closure.c"
+#include "sophon_gc_module.c"
+#include "sophon_gc_parser.c"
+#include "sophon_gc_array.c"
+#include "sophon_gc_vm.c"
+#include "sophon_gc_regexp.c"
 
 /*Scan a GC object*/
 static void
 gc_scan (Sophon_VM *vm, Sophon_GCObject *obj)
 {
 	switch (obj->gc_type) {
-		case SOPHON_GC_OBJECT:
+		case SOPHON_GC_Object:
 			gc_scan_object(vm, (Sophon_Object*)obj);
+			break;
+		case SOPHON_GC_GlobalFrame:
+			gc_scan_global_frame(vm, (Sophon_GlobalFrame*)obj);
+			break;
+		case SOPHON_GC_DeclFrame:
+			gc_scan_decl_frame(vm, (Sophon_DeclFrame*)obj);
+			break;
+		case SOPHON_GC_CatchFrame:
+			gc_scan_catch_frame(vm, (Sophon_CatchFrame*)obj);
+			break;
+		case SOPHON_GC_WithFrame:
+			gc_scan_with_frame(vm, (Sophon_WithFrame*)obj);
+			break;
+		case SOPHON_GC_Closure:
+			gc_scan_closure(vm, (Sophon_Closure*)obj);
+			break;
+		case SOPHON_GC_Module:
+			gc_scan_module(vm, (Sophon_Module*)obj);
+			break;
+		case SOPHON_GC_Array:
+			gc_scan_array(vm, (Sophon_Array*)obj);
+			break;
+		case SOPHON_GC_RegExp:
+			gc_scan_regexp(vm, (Sophon_RegExp*)obj);
 			break;
 	}
 }
@@ -148,7 +213,7 @@ gc_scan_root (Sophon_VM *vm)
 				vm->gc_nb_obuf.cap));
 
 	while (obj < olast) {
-		gc_mark(vm, *obj);
+		sophon_value_mark(vm, (Sophon_Value)*obj);
 		obj++;
 	}
 
@@ -271,7 +336,12 @@ sophon_gc_run (Sophon_VM *vm)
 
 	SOPHON_ASSERT(vm);
 
+	if (vm->gc_running)
+		return;
+
 	vm->gc_running = SOPHON_TRUE;
+
+	vm->gc_unmanaged_list = NULL;
 
 	SOPHON_INFO(("gc start, total memory size %d", vm->mm_curr_used));
 	vm->gc_obuf1.count = 0;
@@ -301,6 +371,7 @@ sophon_gc_run (Sophon_VM *vm)
 	}
 
 	SOPHON_INFO(("gc sweep"));
+
 	for (obj = vm->gc_unmanaged_list; obj; obj = obj->gc_next) {
 		obj->gc_flags &= ~SOPHON_GC_FL_MARKED;
 	}
@@ -318,8 +389,8 @@ sophon_gc_run (Sophon_VM *vm)
 		}
 	}
 
-	/*Sweep double pool*/
-	sophon_double_pool_sweep(vm);
+	/*Sweep number pool*/
+	sophon_number_pool_sweep(vm);
 
 	vm->gc_mem_size = vm->mm_curr_used;
 
@@ -335,5 +406,11 @@ sophon_gc_check (Sophon_VM *vm)
 				(vm->gc_mem_size * 3 < vm->mm_curr_used * 2)) {
 		sophon_gc_run(vm);
 	}
+}
+
+void
+sophon_gc_add_nb (Sophon_VM *vm, Sophon_Value v)
+{
+	gc_obuf_add(vm, &vm->gc_nb_obuf, (Sophon_GCObject*)v);
 }
 

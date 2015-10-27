@@ -51,11 +51,32 @@ utf8_to_utf16 (const Sophon_U8 *in_buf,
 	while ((sleft >= 1) && (dleft >= 2)) {
 		Sophon_Int bytes;
 
-		if ((src[0] & 0xF0) == 0xE0) {
+		if ((src[0] & 0xF8) == 0xF0) {
+			Sophon_U32 code;
+
+			if (sleft < 4)
+				break;
+
+			code = ((src[0] & 0x07) << 18) | ((src[1] & 0x3F) << 12) |
+						((src[2] & 0x3F) << 6) | (src[3] & 0x3F);
+
+			uc = (((code - 0x10000) >> 10) & 0x3FF) + 0xD800;
+			if (swap)
+				tmp = (uc >> 8) | (uc << 8);
+			else
+				tmp = uc;
+			*(Sophon_U16*)dst = tmp;
+			dst += 2;
+			dleft -= 2;
+
+			uc = ((code - 0x10000) & 0x3FF) + 0xDC00;
+			bytes = 4;
+		} else if ((src[0] & 0xF0) == 0xE0) {
 			if (sleft < 3)
 				break;
 
-			uc = ((src[0] & 0x0F) << 12) | ((src[1] & 0x3F) << 6) | (src[2] & 0x3F);
+			uc = ((src[0] & 0x0F) << 12) | ((src[1] & 0x3F) << 6) |
+						(src[2] & 0x3F);
 			bytes = 3;
 		} else if ((src[0] & 0xE0) == 0xC0) {
 			if (sleft < 2)
@@ -113,23 +134,48 @@ utf16_to_utf8 (const Sophon_U8 *in_buf,
 			uc = tmp;
 		}
 
-		if (uc <= 0x7F) {
+		if ((uc >= 0xDC00) && (uc <= 0xDFFF)) {
+			break;
+		} else if ((uc >= 0xD800) && (uc <= 0xDBFF)) {
+			Sophon_U32 code;
+			Sophon_U16 uc2;
+
+			src += 2;
+			sleft -= 2;
+
+			tmp = *(Sophon_U16*)src;
+			if (swap) {
+				uc2 = (tmp >> 8) | (tmp << 8);
+			} else {
+				uc2 = tmp;
+			}
+
+			if ((uc2 < 0xDC00) || (uc2 > 0xDFFF))
+				break;
+
+			code = (uc - 0xD800) * 0x400 + (uc2 - 0xDC00) + 0x10000;
+			dst[0] = (code >> 18) | 0xF0;
+			dst[1] = ((code >> 12) & 0x3F) | 0x80;
+			dst[2] = ((code >> 6) & 0x3F) | 0x80;
+			dst[3] = (code & 0x3F) | 0x80;
+			bytes = 4;
+		} else if (uc <= 0x7F) {
 			dst[0] = uc;
 			bytes = 1;
 		} else if ((uc > 0x7F) && (uc <= 0x7FF)) {
 			if (dleft < 2)
 				break;
 
-			dst[0] = (uc >> 6) & 0xC0;
-			dst[1] = (uc & 0x3F) & 0x80;
+			dst[0] = (uc >> 6) | 0xC0;
+			dst[1] = (uc & 0x3F) | 0x80;
 			bytes = 2;
 		} else {
 			if (dleft < 3)
 				break;
 
-			dst[0] = (uc >> 12) & 0xE0;
-			dst[1] = ((uc >> 6) & 0x3F) & 0x80;
-			dst[2] = (uc & 0x3F) & 0x80;
+			dst[0] = (uc >> 12) | 0xE0;
+			dst[1] = ((uc >> 6) & 0x3F) | 0x80;
+			dst[2] = (uc & 0x3F) | 0x80;
 			bytes = 3;
 		}
 

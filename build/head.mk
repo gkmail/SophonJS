@@ -19,6 +19,8 @@ MKDIR:=mkdir -p
 RM:=rm -rf
 TOUCH:=touch
 INSTALL:=install
+CHMOD:=chmod
+LDCONFIG:=ldconfig
 
 GLOBAL_CFLAGS+=-Iinclude -I$(OUT)/include
 
@@ -39,4 +41,4 @@ all:
 
 .PHONY: all
 
-include build/object.mk
+include build/obj.mk

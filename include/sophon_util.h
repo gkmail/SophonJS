@@ -68,10 +68,75 @@ extern "C" {
 	#error no "strcmp" defined
 #endif
 
+#ifdef SOPHON_HAVE_STRCASECMP
+	#define sophon_strcasecmp(s1, s2) strcasecmp(s1, s2)
+#else
+	#error no "strcasecmp" defined
+#endif
+
+#ifdef SOPHON_HAVE_STRNCMP
+	#define sophon_strncmp(s1, s2) strncmp(s1, s2)
+#else
+	#error no "strncmp" defined
+#endif
+
+#ifdef SOPHON_HAVE_STRNCASECMP
+	#define sophon_strncasecmp(s1, s2) strncasecmp(s1, s2)
+#else
+	#error no "strncasecmp" defined
+#endif
+
+#ifdef SOPHON_HAVE_STRSTR
+	#define sophon_strstr(s, sub) strstr(s, sub)
+#else
+	#error no "strstr" defined
+#endif
+
+#ifdef SOPHON_HAVE_STRCHR
+	#define sophon_strchr(s, c) strstr(s, c)
+#else
+	#error no "strchr" defined
+#endif
+
+
 #ifdef SOPHON_HAVE_REALLOC
 	#define sophon_realloc(ptr, size) realloc(ptr, size)
 #else
 	#error no "realloc" defined
+#endif
+
+#ifdef SOPHON_HAVE_MATH
+#define SOPHON_NAN      NAN
+#define SOPHON_INFINITY INFINITY
+#define sophon_isnan(n)    isnan(n)
+#define sophon_isinf(n)    isinf(n)
+#define sophon_fmod(a, b)  fmod(a, b)
+#define sophon_abs(n)      fabs(n)
+#define sophon_acos(n)     acos(n)
+#define sophon_asin(n)     asin(n)
+#define sophon_atan(n)     atan(n)
+#define sophon_ceil(n)     ceil(n)
+#define sophon_cos(n)      cos(n)
+#define sophon_exp(n)      exp(n)
+#define sophon_floor(n)    floor(n)
+#define sophon_trunc(n)    trunc(n)
+#define sophon_log(n)      log(n)
+#define sophon_sin(n)      sin(n)
+#define sophon_round(n)    round(n)
+#define sophon_tan(n)      tan(n)
+#define sophon_sqrt(n)     sqrt(n)
+#define sophon_atan2(a, b) atan2(a, b)
+#define sophon_pow(a, b)   pow(a, b)
+#else
+#error no math functions defined
+#endif
+
+#ifdef SOPHON_HAVE_DRAND48
+#define sophon_random()    drand48()
+#elif defined(SOPHON_HAVE_RAND)
+#define sophon_random()    (rand()/(RAND_MAX+1.0))
+#else
+#error no random function defined
 #endif
 
 #define sophon_isascii(c)  (!((c) & 0xFFFFFF80))
@@ -86,9 +151,25 @@ extern "C" {
 			((c) == '\n') || ((c) == '\r') || ((c) == '\f') || ((c) == '\v'))
 #define sophon_isalpha(c)  (sophon_islower(c) || sophon_isupper(c))
 #define sophon_isalnum(c)  (sophon_isalpha(c) || sophon_isdigit(c))
+#define sophon_isprint(c)  (((c) >= 0x20) && ((c) <= 0x7E))
+
+#define sophon_tolower(c) (sophon_isupper(c) ? ((c) - 'A' + 'a') : (c))
+#define sophon_toupper(c) (sophon_islower(c) ? ((c) - 'a' + 'A') : (c))
+
+#ifdef SOPHON_HAVE_TOWUPPER
+	#define sophon_towupper(c) towupper(c)
+#endif
+#ifdef SOPHON_HAVE_TOWLOWER
+	#define sophon_towlower(c) towlower(c)
+#endif
+#ifdef SOPHON_HAVE_ISWSPACE
+	#define sophon_iswspace(c) iswspace(c)
+#endif
 
 extern void sophon_prerr(const char *fmt, ...);
 extern void sophon_vprerr(const char *fmt, va_list ap);
+extern void sophon_pr(const char *fmt, ...);
+extern void sophon_vpr(const char *fmt, va_list ap);
 
 extern void sophon_warning (const char *fmt, ...);
 extern void sophon_error (const char *fmt, ...);
@@ -96,10 +177,22 @@ extern void sophon_fatal (const char *fmt, ...);
 
 #define sophon_nomem() sophon_fatal("not enough memory!")
 
-#ifdef SOPHON_UTF8_CHAR
+#ifdef SOPHON_8BITS_CHAR
 typedef Sophon_U16 Sophon_CharRange;
+#define SOPHON_MAKE_CHAR_RANGE(min, max) (((max) << 8) | (min))
+#define SOPHON_EXPAND_CHAR_RANGE(v, min, max)\
+	SOPHON_MACRO_BEGIN\
+		(min) = (v) & 0xFF;\
+		(max) = ((v) >> 8) & 0xFF;\
+	SOPHON_MACRO_END
 #else
 typedef Sophon_U32 Sophon_CharRange;
+#define SOPHON_MAKE_CHAR_RANGE(min, max) (((max) << 16) | (min))
+#define SOPHON_EXPAND_CHAR_RANGE(v, min, max)\
+	SOPHON_MACRO_BEGIN\
+		(min) = (v) & 0xFFFF;\
+		(max) = ((v) >> 16) & 0xFFFF;\
+	SOPHON_MACRO_END
 #endif
 
 /**
@@ -118,28 +211,148 @@ extern Sophon_Bool sophon_char_table_search (Sophon_Char ch,
 					const Sophon_CharRange *tab,
 					Sophon_U32 size);
 
-/**
- * \brief Convert a string into integer number
- * \param[in] str The string
- * \param[out] end If end is not NULL, return the end position of the number
- * \param base The base of the number
- * \param[out] i Return the integer number
- * \retval SOPHON_OK On success
- * \retval <0 On error
- */
-extern Sophon_Result sophon_strtoi (const Sophon_Char *nptr,
-			Sophon_Char **endptr, Sophon_Int base, Sophon_Int *pi);
+/**\brief Convert string to integer*/
+#define SOPHON_BASE_INT       (0)
+/**\brief Convert string to float point number*/
+#define SOPHON_BASE_FLOAT     (-1)
+/**\brief Convert string to integer or float point number*/
+#define SOPHON_BASE_INT_FLOAT (-2)
 
 /**
  * \brief Convert a string into double precision number
  * \param[in] str The string
  * \param[out] end If end is not NULL, return the end position of the number
- * \param[out] d Return the double precision number
+ * \param base The base of the number
+ * \param[out] pd Return the double precision number
  * \retval SOPHON_OK On success
  * \retval <0 On error
  */
 extern Sophon_Result sophon_strtod (const Sophon_Char *str,
-			Sophon_Char **end, Sophon_Double *pd);
+			Sophon_Char **end, Sophon_Int base, Sophon_Number *pd);
+
+typedef enum {
+	SOPHON_D2STR_RADIX,
+	SOPHON_D2STR_FIXED,
+	SOPHON_D2STR_EXP,
+	SOPHON_D2STR_PREC
+} Sophon_D2StrMode;
+
+/**
+ * \brief Convert a double precision number into string
+ * \param[in] vm The current virtual machine
+ * \param d The double value
+ * \param mode Convert mode
+ * \param param Convert parameter
+ * \return The string
+ */
+extern Sophon_String* sophon_dtostr (Sophon_VM *vm, Sophon_Double d,
+			Sophon_D2StrMode mode, Sophon_Int param);
+
+/**\brief Value compare function*/
+typedef Sophon_Int (*Sophon_CmpFunc) (Sophon_VM *vm,
+					Sophon_Value v1, Sophon_Value v2, Sophon_Ptr arg);
+
+/**
+ * \brief Sort the value array by the compare function
+ * \param[in] vm The current virtual machine
+ * \param[in] v The value array
+ * \param n Value array length
+ * \param func Compare function
+ * \param[in] User defined compare function
+ * \retval SOPHON_OK On success
+ * \retval <0 On error
+ */
+extern Sophon_Result  sophon_qsort (Sophon_VM *vm, Sophon_Value *v,
+			Sophon_Int n, Sophon_CmpFunc cmp, Sophon_Ptr arg);
+
+#ifdef SOPHON_8BITS_CHAR
+
+#define sophon_ucstrlen(s)      sophon_strlen(s)
+#define sophon_ucstrcmp(s1, s2) sophon_strcmp(s1, s2)
+#define sophon_ucstrcasecmp(s1, s2)  sophon_strcasecmp(s1, s2)
+#define sophon_ucstrncmp(s1, s2)     sophon_strncmp(s1, s2)
+#define sophon_ucstrncasecmp(s1, s2) sophon_strncasecmp(s1, s2)
+#define sophon_ucstrstr(str, sub)    sophon_strstr(str, sub)
+#define sophon_ucstrchr(str, chr)    sophon_strchr(str, chr)
+
+#else /*!defined(SOPHON_8BITS_CHAR)*/
+
+/**
+ * \brief Calculate unicode string's length
+ * \param[in] str String
+ * \return The string length
+ */
+extern Sophon_U32     sophon_ucstrlen (const Sophon_Char *str);
+
+/**
+ * \brief Compare 2 unicode C strings
+ * \param[in] s1 String 1
+ * \param[in] s2 String 2
+ * \retval 0 Strings are equal
+ * \retval <0 s1 < s2
+ * \retval >0 s1 > s2
+ */
+extern Sophon_Int     sophon_ucstrcmp (const Sophon_Char *s1,
+						const Sophon_Char *s2);
+
+/**
+ * \brief Compare 2 unicode C strings do not care case
+ * \param[in] s1 String 1
+ * \param[in] s2 String 2
+ * \retval 0 Strings are equal
+ * \retval <0 s1 < s2
+ * \retval >0 s1 > s2
+ */
+extern Sophon_Int     sophon_ucstrcasecmp (const Sophon_Char *s1,
+						const Sophon_Char *s2);
+
+/**
+ * \brief Compare 2 unicode C strings
+ * \param[in] s1 String 1
+ * \param[in] s2 String 2
+ * \param len Compare length
+ * \retval 0 Strings are equal
+ * \retval <0 s1 < s2
+ * \retval >0 s1 > s2
+ */
+extern Sophon_Int     sophon_ucstrncmp (const Sophon_Char *s1,
+						const Sophon_Char *s2,
+						Sophon_U32 len);
+
+/**
+ * \brief Compare 2 unicode C strings do not care case
+ * \param[in] s1 String 1
+ * \param[in] s2 String 2
+ * \param len Compare length
+ * \retval 0 Strings are equal
+ * \retval <0 s1 < s2
+ * \retval >0 s1 > s2
+ */
+extern Sophon_Int     sophon_ucstrncasecmp (const Sophon_Char *s1,
+						const Sophon_Char *s2,
+						Sophon_U32 len);
+
+/**
+ * \brief Search the substring in an unicode string
+ * \param[in] str String
+ * \param[in] sub String to search
+ * \return The sub string position
+ * \retval NULL Cannot find the substring
+ */
+extern const Sophon_Char* sophon_ucstrstr (const Sophon_Char *str,
+						const Sophon_Char *sub);
+
+/**
+ * \brief Search a character in an unicode string
+ * \param[in] str String
+ * \param chr The character
+ * \return The position find the character
+ * \retval NULL Cannot find the character
+ */
+extern const Sophon_Char* sophon_ucstrchr (const Sophon_Char *str,
+						Sophon_Char chr);
+
+#endif /*SOPHON_8BITS_CHAR*/
 
 #ifdef __cplusplus
 }

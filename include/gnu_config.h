@@ -38,7 +38,12 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <ctype.h>
+#include <wctype.h>
 #include <limits.h>
+#include <math.h>
+#include <time.h>
+#include <errno.h>
+#include <sys/time.h>
 
 #define SOPHON_INLINE inline
 
@@ -53,6 +58,19 @@
 #define SOPHON_HAVE_EXIT    1
 #define SOPHON_HAVE_STRLEN  1
 #define SOPHON_HAVE_STRCMP  1
+#define SOPHON_HAVE_STRCASECMP  1
+#define SOPHON_HAVE_STRNCMP  1
+#define SOPHON_HAVE_STRNCASECMP  1
+#define SOPHON_HAVE_STRSTR  1
+#define SOPHON_HAVE_STRCHR  1
+#define SOPHON_HAVE_MATH    1
+#define SOPHON_HAVE_DRAND48 1
+#define SOPHON_HAVE_RAND    1
+#define SOPHON_HAVE_TOWUPPER 1
+#define SOPHON_HAVE_TOWLOWER 1
+#define SOPHON_HAVE_ISWSPACE 1
+#define SOPHON_HAVE_TIME     1
+#define SOPHON_HAVE_GNUC_EXT 1
 
 #endif
 

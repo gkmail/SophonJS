@@ -31,6 +31,9 @@ install_libs: $(INSTALL_LIBS)
 		$(MKDIR) $(INSTALL_LIBS_DEST);\
 		$(INSTALL) -m 755 $$f $(INSTALL_LIBS_DEST);\
 	done
+ifneq ($(INSTALL_DLIBS),)
+	$(Q)$(LDCONFIG) $(INSTALL_LIBS_DEST)
+endif
 
 install_exes: $(INSTALL_EXES)
 	$(Q)for f in $^; do\

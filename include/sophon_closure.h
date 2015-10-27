@@ -38,15 +38,56 @@ extern "C" {
 
 #include "sophon_types.h"
 #include "sophon_gc.h"
+#include "sophon_property.h"
+#include "sophon_object.h"
 
 /**\brief Closure*/
 struct Sophon_Closure_s {
 	SOPHON_GC_HEADER
-	Sophon_Closure  *bottom;  /**< The bottom closure*/
-	Sophon_Function *func;    /**< The function*/
-	Sophon_Frame    *var_env; /**< The variant frame*/
-	Sophon_Frame    *lex_env; /**< The lexical frame*/
+	union {
+		struct {
+			Sophon_Function *func;    /**< The function*/
+			Sophon_Frame    *var_env; /**< The variant frame*/
+			Sophon_Frame    *lex_env; /**< The lexical frame*/
+		} func;                       /**< Function*/
+		struct {
+			Sophon_Value     funcv;   /**< Real closure value*/
+			Sophon_Value     thisv;   /**< This value*/
+			Sophon_Array    *args;    /**< Arguments array*/
+		} bind;                       /**< Bind*/
+	} c;                              /**< Closure data union*/
 };
+
+/**
+ * \brief Create a new closure
+ * \param[in] vm The current virtual machine
+ * \param[in] func The function of the closure
+ * \return The new closure
+ */
+extern Sophon_Closure* sophon_closure_create (Sophon_VM *vm,
+						Sophon_Function *func);
+
+/**
+ * \brief Create a closure bind to another one
+ * \param[in] vm The current virtual machine
+ * \param funcv The closure value binded to
+ * \param thisv This argument
+ * \param[in] arr Arguments array
+ * \return The new closure
+ */
+extern Sophon_Closure* sophon_closure_bind (Sophon_VM *vm,
+						Sophon_Value funcv, Sophon_Value thisv,
+						Sophon_Array *arr);
+
+/**
+ * \brief Release an unused closure
+ * Closure is managed by GC.
+ * You should not invoke this function directly.
+ * \param[in] vm The current virtual machine
+ * \param[in] clos The closure to be released
+ */
+extern void            sophon_closure_destroy (Sophon_VM *vm,
+						Sophon_Closure *clos);
 
 #ifdef __cplusplus
 }

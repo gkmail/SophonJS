@@ -35,33 +35,49 @@
 #include <sophon_debug.h>
 
 Sophon_Bool
-sophon_char_table_search (Sophon_Char ch, const Sophon_U32 *tab, Sophon_U32 size)
+sophon_char_table_search (Sophon_Char ch, const Sophon_CharRange *tab,
+			Sophon_U32 size)
 {
-	const Sophon_U32 *min, *max, *mid;
+	const Sophon_CharRange *min, *max, *mid;
 	Sophon_U32 code;
 
 	SOPHON_ASSERT(tab && size);
 
-	code = (ch << 16) | ch;
+	if (size < 8) {
+		Sophon_U32 i;
+
+		for (i = 0; i < size; i++) {
+			Sophon_Char cmax, cmin;
+
+			SOPHON_EXPAND_CHAR_RANGE(tab[i], cmin, cmax);
+
+			if ((cmin <= ch) && (cmax >= ch))
+				return SOPHON_TRUE;
+		}
+
+		return SOPHON_FALSE;
+	}
+
+	code = SOPHON_MAKE_CHAR_RANGE(ch, ch);
 
 	min = tab;
 	max = min + size;
 
 	while (1) {
-		Sophon_U32 check;
+		Sophon_Char cmax, cmin;
 
 		mid = min + (max - min) / 2;
 
-		check = *mid;
+		SOPHON_EXPAND_CHAR_RANGE(*mid, cmin, cmax);
 
-		if (((check & 0xFFFF) <= ch) && ((check >> 16) >= ch))
+		if ((cmin <= ch) && (cmax >= ch))
 			return SOPHON_TRUE;
 
 		if (mid == min) {
 			break;
 		}
 
-		if (check < code)
+		if (*mid < code)
 			min = mid;
 		else
 			max = mid;

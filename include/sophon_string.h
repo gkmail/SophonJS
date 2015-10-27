@@ -62,10 +62,10 @@ struct Sophon_String_s {
  * \brief Get the string's length
  * Length is equal to the unicode count in the string.
  */
-#define sophon_string_len(vm, str) \
+#define sophon_string_length(vm, str) \
 	(((Sophon_String*)(str))->length)
 
-#ifdef SOPHON_UTF8_CHAR
+#ifdef SOPHON_8BITS_CHAR
 	#define SOPHON_UTF8_BUF_SIZE(len) ((len)+1)
 #else
 	#define SOPHON_UTF8_BUF_SIZE(len) ((len)*3+1)
@@ -93,7 +93,7 @@ extern Sophon_String* sophon_string_from_chars (Sophon_VM *vm,
 						const Sophon_Char *chars,
 						Sophon_U32 len);
 
-#ifdef SOPHON_UTF8_CHAR
+#ifdef SOPHON_8BITS_CHAR
 #define sophon_string_from_utf8_cstr(vm, cstr)\
 			sophon_string_create(vm, cstr)
 #else
@@ -108,7 +108,7 @@ extern Sophon_String* sophon_string_from_utf8_cstr (Sophon_VM *vm,
 						const char *cstr);
 #endif
 
-#ifdef SOPHON_UTF8_CHAR
+#ifdef SOPHON_8BITS_CHAR
 #define sophon_string_from_utf8_chars(vm, chars, len)\
 			sophon_string_from_chars(vm, chars, len)
 #else
@@ -158,7 +158,7 @@ extern Sophon_Result  sophon_string_new_utf8_cstr (Sophon_VM *vm,
 						char **buf,
 						Sophon_U32 *len);
 
-#ifdef SOPHON_UTF8_CHAR
+#ifdef SOPHON_8BITS_CHAR
 #define sophon_string_free_utf8_cstr(vm, buf, len)
 #else
 /**\brief Free the UTF8 buffer allocated by sophon_string_new_utf8_cstr*/
@@ -211,6 +211,48 @@ extern Sophon_String* sophon_string_intern_real (Sophon_VM *vm,
 extern Sophon_Int     sophon_string_cmp (Sophon_VM *vm,
 						Sophon_String *s1,
 						Sophon_String *s2);
+
+/**
+ * \brief Compare 2 strings do not care the case
+ * \param[in] vm The current virtual machine
+ * \param[in] s1 String 1
+ * \param[in] s2 STring 2
+ * \retval 0 2 strings are equal
+ * \retval >0 s1 > s2
+ * \retval <0 s1 < s2
+ */
+extern Sophon_Int     sophon_string_casecmp (Sophon_VM *vm,
+						Sophon_String *s1,
+						Sophon_String *s2);
+
+/**
+ * \brief Concatenate 2 strings
+ * \param[in] vm The current virtual machine
+ * \param[in] s1 String 1
+ * \param[in] s2 STring 2
+ * \return The new srting
+ */
+extern Sophon_String* sophon_string_concat (Sophon_VM *vm,
+						Sophon_String *s1,
+						Sophon_String *s2);
+
+/**
+ * \brief Convert the characters to escape characters
+ * \param[in] vm The current virtual machine
+ * \param[in] str The input string
+ * \return The new string
+ */
+extern Sophon_String* sophon_string_escape (Sophon_VM *vm,
+						Sophon_String *str);
+
+/**
+ * \brief Unescape the characters in the string
+ * \param[in] vm The current virtual machine
+ * \param[in] str The input string
+ * \return The new string
+ */
+extern Sophon_String* sophon_string_unescape (Sophon_VM *vm,
+						Sophon_String *str);
 
 #ifdef __cplusplus
 }

@@ -95,7 +95,7 @@ sophon_hash_add (Sophon_VM *vm,
 	}
 
 	if (hash->bucket * 3 <= hash->count) {
-		Sophon_U32 size = SOPHON_MAX(8, hash->count + 1);
+		Sophon_U32 size = SOPHON_MAX(9, hash->count);
 		Sophon_HashEntry **buf;
 		Sophon_U32 i;
 		Sophon_HashEntry *enext;
@@ -117,7 +117,7 @@ sophon_hash_add (Sophon_VM *vm,
 
 		if (hash->entries)
 			sophon_mm_free(vm, hash->entries,
-						hash->bucket * sizeof(Sophon_HashEntry**));
+						hash->bucket * sizeof(Sophon_HashEntry*));
 
 		hash->entries = buf;
 		hash->bucket  = size;
@@ -146,7 +146,7 @@ sophon_hash_remove (Sophon_VM *vm,
 						Sophon_EqualFunc equ_func,
 						Sophon_Ptr key)
 {
-	Sophon_HashEntry *ent, *eprev;
+	Sophon_HashEntry *ent, **eprev;
 	Sophon_U32 pos;
 
 	SOPHON_ASSERT(vm && hash && key_func && equ_func);
@@ -156,18 +156,19 @@ sophon_hash_remove (Sophon_VM *vm,
 
 	pos = key_func(vm, key) % hash->bucket;
 
-	for (eprev = NULL, ent = hash->entries[pos]; ent; ent = ent->next) {
+	eprev = &hash->entries[pos];
+	ent = *eprev;
+	while (ent) {
 		if (equ_func(vm, ent->key, key)){
-			if (eprev)
-				eprev->next = ent->next;
-			else
-				hash->entries[pos] = ent->next;
-
+			*eprev = ent->next;
 			sophon_mm_free(vm, ent, sizeof(Sophon_HashEntry));
 			hash->count--;
 
 			return SOPHON_OK;
 		}
+
+		eprev = &ent->next;
+		ent = *eprev;
 	}
 
 	return SOPHON_NONE;
@@ -278,12 +279,12 @@ sophon_value_key (Sophon_VM *vm, Sophon_Ptr key)
 	Sophon_Value v = (Sophon_Value)key;
 	Sophon_U32 kv;
 
-	if (SOPHON_VALUE_IS_DOUBLE(v)) {
-		kv = (Sophon_U32)SOPHON_VALUE_GET_DOUBLE(v);
+	if (SOPHON_VALUE_IS_NUMBER(v)) {
+		kv = (Sophon_U32)SOPHON_VALUE_GET_NUMBER(v);
 	} else if (SOPHON_VALUE_IS_GC(v)) {
 		Sophon_GCObject *obj = SOPHON_VALUE_GET_GC(v);
 
-		if (obj->gc_type == SOPHON_GC_STRING) {
+		if (obj->gc_type == SOPHON_GC_String) {
 			kv = sophon_string_key(vm, obj);
 		} else {
 			kv = (Sophon_U32)v;
@@ -295,6 +296,10 @@ sophon_value_key (Sophon_VM *vm, Sophon_Ptr key)
 	return kv;
 }
 
+#ifdef sophon_value_equal
+	#undef sophon_value_equal
+#endif
+
 Sophon_Bool
 sophon_value_equal (Sophon_VM *vm, Sophon_Ptr k1, Sophon_Ptr k2)
 {
@@ -302,14 +307,14 @@ sophon_value_equal (Sophon_VM *vm, Sophon_Ptr k1, Sophon_Ptr k2)
 	Sophon_Value v2 = (Sophon_Value)k2;
 	Sophon_Bool r;
 
-	if (SOPHON_VALUE_IS_DOUBLE(v1) && SOPHON_VALUE_IS_DOUBLE(v2)) {
-		r = SOPHON_VALUE_GET_DOUBLE(v1) == SOPHON_VALUE_GET_DOUBLE(v2);
+	if (SOPHON_VALUE_IS_NUMBER(v1) && SOPHON_VALUE_IS_NUMBER(v2)) {
+		r = SOPHON_VALUE_GET_NUMBER(v1) == SOPHON_VALUE_GET_NUMBER(v2);
 	} else if (SOPHON_VALUE_IS_GC(v1) && SOPHON_VALUE_IS_GC(v2)) {
 		Sophon_GCObject *o1 = SOPHON_VALUE_GET_GC(v1);
 		Sophon_GCObject *o2 = SOPHON_VALUE_GET_GC(v2);
 
-		if ((o1->gc_type == SOPHON_GC_STRING) &&
-					(o2->gc_type == SOPHON_GC_STRING)) {
+		if ((o1->gc_type == SOPHON_GC_String) &&
+					(o2->gc_type == SOPHON_GC_String)) {
 			r = sophon_string_equal(vm, o1, o2);
 		} else {
 			r = v1 == v2;

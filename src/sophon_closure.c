@@ -32,111 +32,83 @@
 #include <sophon_types.h>
 #include <sophon_mm.h>
 #include <sophon_util.h>
+#include <sophon_vm.h>
+#include <sophon_object.h>
+#include <sophon_closure.h>
+#include <sophon_stack.h>
+#include <sophon_frame.h>
+#include <sophon_gc.h>
+#include <sophon_function.h>
+#include <sophon_array.h>
 #include <sophon_debug.h>
 
-/*
- * Convert a string to a long integer.
- *
- * Ignores `locale' stuff.  Assumes that the upper and lower case
- * alphabets and digits are each contiguous.
- */
-Sophon_Result
-sophon_strtoi (const Sophon_Char *nptr, Sophon_Char **endptr,
-			Sophon_Int base, Sophon_Int *pi)
+Sophon_Closure*
+sophon_closure_create (Sophon_VM *vm, Sophon_Function *func)
 {
-	const Sophon_Char *s;
-	long acc, cutoff;
-	int c;
-	int neg, any, cutlim;
+	Sophon_Closure *clos;
+	Sophon_Frame *frame;
 
-	/*
-	 * Skip white space and pick up leading +/- sign if any.
-	 * If base is 0, allow 0x for hex and 0 for octal, else
-	 * assume decimal; if base is already 16, allow 0x.
-	 */
-	s = nptr;
-	do {
-		c = *s++;
-	} while (sophon_isspace(c));
-	if (c == '-') {
-		neg = 1;
-		c = *s++;
+	SOPHON_ASSERT(vm && func);
+
+	SOPHON_PRIM_OBJ_ALLOC(vm, clos, Closure);
+
+	clos->c.func.func = func;
+
+	if (func->flags & SOPHON_FUNC_FL_NATIVE)
+		clos->gc_flags |= SOPHON_GC_FL_NATIVE;
+
+	if (func->flags & SOPHON_FUNC_FL_GLOBAL) {
+		clos->c.func.var_env = NULL;
+		clos->c.func.lex_env = NULL;
 	} else {
-		neg = 0;
-		if (c == '+')
-			c = *s++;
-	}
-	if ((base == 0 || base == 16) &&
-	    c == '0' && (*s == 'x' || *s == 'X')) {
-		c = s[1];
-		s += 2;
-		base = 16;
-	}
-	if (base == 0)
-		base = c == '0' ? 8 : 10;
-
-	/*
-	 * Compute the cutoff value between legal numbers and illegal
-	 * numbers.  That is the largest legal value, divided by the
-	 * base.  An input number that is greater than this value, if
-	 * followed by a legal input character, is too big.  One that
-	 * is equal to this value may be valid or not; the limit
-	 * between valid and invalid numbers is then based on the last
-	 * digit.  For instance, if the range for longs is
-	 * [-2147483648..2147483647] and the input base is 10,
-	 * cutoff will be set to 214748364 and cutlim to either
-	 * 7 (neg==0) or 8 (neg==1), meaning that if we have accumulated
-	 * a value > 214748364, or equal but the next digit is > 7 (or 8),
-	 * the number is too big, and we will return a range error.
-	 *
-	 * Set any if any `digits' consumed; make it negative to indicate
-	 * overflow.
-	 */
-	cutoff = neg ? SOPHON_MIN_INT : SOPHON_MAX_INT;
-	cutlim = cutoff % base;
-	cutoff /= base;
-	if (neg) {
-		if (cutlim > 0) {
-			cutlim -= base;
-			cutoff += 1;
-		}
-		cutlim = -cutlim;
-	}
-	for (acc = 0, any = 0;; c = *s++) {
-		if (sophon_isdigit(c))
-			c -= '0';
-		else if (sophon_isalpha(c))
-			c -= sophon_isupper(c) ? 'A' - 10 : 'a' - 10;
-		else
-			break;
-		if (c >= base)
-			break;
-		if (any < 0)
-			continue;
-		if (neg) {
-			if (acc < cutoff || (acc == cutoff && c > cutlim)) {
-				any = -1;
-				return SOPHON_ERR_2BIG;
-			} else {
-				any = 1;
-				acc *= base;
-				acc -= c;
-			}
+		if (vm->stack) {
+			clos->c.func.var_env = vm->stack->var_env;
+			clos->c.func.lex_env = vm->stack->lex_env;
 		} else {
-			if (acc > cutoff || (acc == cutoff && c > cutlim)) {
-				any = -1;
-				return SOPHON_ERR_2BIG;
-			} else {
-				any = 1;
-				acc *= base;
-				acc += c;
-			}
+			clos->c.func.var_env = NULL;
+			clos->c.func.lex_env = NULL;
+		}
+
+		/*Add the frames referened to GC*/
+		frame = clos->c.func.lex_env;
+		while (frame && !(frame->gc_flags & SOPHON_GC_FL_MANAGED)) {
+			sophon_gc_add(vm, (Sophon_GCObject*)frame);
+			frame = frame->bottom;
 		}
 	}
-	if (endptr != 0)
-		*endptr = (Sophon_Char*)(any ? s - 1 : nptr);
 
-	*pi = acc;
-	return SOPHON_OK;
+	sophon_gc_add(vm, (Sophon_GCObject*)clos);
+
+	return clos;
 }
+
+Sophon_Closure*
+sophon_closure_bind (Sophon_VM *vm, Sophon_Value funcv, Sophon_Value thisv,
+		Sophon_Array *arr)
+{
+	Sophon_Closure *clos;
+
+	SOPHON_ASSERT(vm);
+
+	SOPHON_PRIM_OBJ_ALLOC(vm, clos, Closure);
+
+	clos->gc_flags |= SOPHON_GC_FL_BIND;
+
+	clos->c.bind.funcv = funcv;
+	clos->c.bind.thisv = thisv;
+	clos->c.bind.args  = arr;
+
+	sophon_gc_add(vm, (Sophon_GCObject*)clos);
+
+	return clos;
+}
+
+void
+sophon_closure_destroy (Sophon_VM *vm, Sophon_Closure *clos)
+{
+	SOPHON_ASSERT(vm && clos);
+
+	SOPHON_PRIM_OBJ_FREE(vm, clos, Closure);
+}
+
 

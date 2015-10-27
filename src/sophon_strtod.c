@@ -48,14 +48,29 @@ const static Sophon_Double pow_table[] = {
     1.0e256
 };
 
+static Sophon_Int
+char_val (Sophon_Char c)
+{
+	if ((c >= '0') && (c <= '9'))
+		return c - '0';
+	else if ((c >= 'a') && (c <= 'z'))
+		return c - 'a' + 10;
+	else if ((c >= 'A') && (c <= 'Z'))
+		return c - 'A' + 10;
+
+	return -1;
+}
+
 Sophon_Result
-sophon_ucs_to_double (const Sophon_Char *str, Sophon_Char **end,
-			Sophon_Double *pd)
+sophon_strtod (const Sophon_Char *str, Sophon_Char **end,
+			Sophon_Int base, Sophon_Number *pd)
 {
 	const Sophon_Char *c;
 	Sophon_Bool has_ipart = SOPHON_FALSE;
 	Sophon_Bool sign = SOPHON_TRUE, esign = SOPHON_TRUE;
-	Sophon_Int ipart = 0, dpart1 = 0, dpart2 = 10, epart = 0;
+	Sophon_Double ipart = 0, dpart1 = 0, dpart2 = 10;
+	Sophon_Int epart = 0;
+	Sophon_Int real_base, n;
 	Sophon_Double d, exp;
 	const Sophon_Double *ppow;
 
@@ -73,16 +88,74 @@ sophon_ucs_to_double (const Sophon_Char *str, Sophon_Char **end,
 		sign = SOPHON_FALSE;
 	}
 
-	if (sophon_isdigit(*c)) {
+	real_base = 10;
+	if (base == 16) {
+		if ((*c == '0') && ((c[1] == 'x') || (c[1] == 'X'))) {
+			c += 2;
+		}
+		real_base = 16;
+	}else if (base == SOPHON_BASE_INT) {
+		if ((*c == '0') && ((c[1] == 'x') || (c[1] == 'X'))) {
+			c += 2;
+			real_base = 16;
+		} else if (*c == '0') {
+			real_base = 8;
+		}
+	} else if (base == SOPHON_BASE_INT_FLOAT) {
+		if ((*c == '0') && ((c[1] == 'x') || (c[1] == 'X'))) {
+			c += 2;
+			real_base = 16;
+		} else if (*c == '0') {
+			const Sophon_Char *nc = c + 1;
+			Sophon_Bool oct = SOPHON_TRUE;
+
+			while (*nc) {
+				if ((*nc == '8') || (*nc == '9') || (*nc == '.') ||
+							(*nc == 'e') || (*nc == 'E')) {
+					oct = SOPHON_FALSE;
+					break;
+				}
+
+				if (!sophon_isdigit(*nc))
+					break;
+
+				nc ++;
+			}
+			
+			if (oct)
+				real_base = 8;
+		}
+	} else if (base != SOPHON_BASE_FLOAT) {
+		real_base = base;
+	}
+
+	n = char_val(*c);
+	if ((n >= 0) && (n < real_base)) {
 		has_ipart = SOPHON_TRUE;
-		ipart = *c - '0';
+		ipart = n;
 		c++;
 	}
 
-	while (sophon_isdigit(*c)) {
-		ipart *= 10;
-		ipart += *c - '0';
+	while (1) {
+		n = char_val(*c);
+		if ((n < 0) || (n >= real_base))
+			break;
+
+		ipart *= real_base;
+		ipart += n;
 		c++;
+	}
+
+	if ((real_base != 10) || ((base != SOPHON_BASE_FLOAT) &&
+					(base != SOPHON_BASE_INT_FLOAT))) {
+		if (!has_ipart)
+			return SOPHON_ERR_LEX;
+
+		*pd = sign ? ipart : -ipart;
+		if (end)
+			*end = (Sophon_Char*)c;
+
+		return SOPHON_OK;
 	}
 
 	if (*c == '.') {

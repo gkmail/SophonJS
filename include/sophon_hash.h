@@ -243,6 +243,9 @@ extern Sophon_U32    sophon_value_key (Sophon_VM *vm, Sophon_Ptr key);
 extern Sophon_Bool   sophon_value_equal (Sophon_VM *vm, Sophon_Ptr k1,
 						Sophon_Ptr k2);
 
+#define sophon_value_equal(vm, v1, v2)\
+	sophon_value_equal(vm, (Sophon_Ptr)(v1), (Sophon_Ptr)(v2))
+
 #ifdef __cplusplus
 }
 #endif

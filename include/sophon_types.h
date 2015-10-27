@@ -66,7 +66,11 @@ typedef long long          Sophon_S64;
 typedef void*          Sophon_Ptr;
 /**\brief Boolean*/
 typedef unsigned char  Sophon_Bool;
-#ifdef SOPHON_UTF8_CHAR
+
+/**\brief Number*/
+typedef Sophon_Double  Sophon_Number;
+
+#ifdef SOPHON_8BITS_CHAR
 typedef Sophon_S8      Sophon_Char;
 #else
 /**\brief Unicode character*/
@@ -79,6 +83,9 @@ typedef Sophon_U16     Sophon_Char;
 
 #define SOPHON_MAX_INT       2147483647
 #define SOPHON_MIN_INT       (-SOPHON_MAX_INT - 1)
+
+#define SOPHON_MAX_S64       9223372036854775807LL
+#define SOPHON_MIN_S64       (-SOPHON_MAX_S64 - 1LL)
 
 #ifdef SOPHON_64BITS
 typedef long long            Sophon_IntPtr;
@@ -93,6 +100,10 @@ typedef unsigned int         Sophon_UIntPtr;
 /**\brief Function result code*/
 typedef int                  Sophon_Result;
 
+/**\brief Break*/
+#define SOPHON_BREAK         3
+/**\brief Continue*/
+#define SOPHON_CONTINUE      2
 /**\brief No error*/
 #define SOPHON_OK            1
 /**\brief No error, but the function do nothing*/
@@ -119,6 +130,10 @@ typedef int                  Sophon_Result;
 #define SOPHON_ERR_RDONLY    -10
 /**\brief Type mismatch*/
 #define SOPHON_ERR_TYPE      -11
+/**\brief Exception*/
+#define SOPHON_ERR_THROW     -12
+/**\brief Illegal argument*/
+#define SOPHON_ERR_ARG       -13
 
 /**\brief Character encoding*/
 typedef enum {
@@ -133,8 +148,18 @@ typedef enum {
 	#define SOPHON_UTF16 SOPHON_UTF16BE
 #endif
 
+#ifdef SOPHON_8BITS_CHAR
+	#define SOPHON_ENC   SOPHON_UTF8
+#else
+	#define SOPHON_ENC   SOPHON_UTF16
+#endif
+
+/**\brief Character encoding convertor*/
+typedef Sophon_Ptr         Sophon_Conv;
 /**\brief Value*/
 typedef Sophon_UIntPtr     Sophon_Value;
+/**\brief GC managed object*/
+typedef struct Sophon_GCObject_s Sophon_GCObject;
 /**\brief Virtual machine*/
 typedef struct Sophon_VM_s Sophon_VM;
 /**\brief String*/
@@ -153,6 +178,10 @@ typedef struct Sophon_Closure_s  Sophon_Closure;
 typedef struct Sophon_Stack_s    Sophon_Stack;
 /**\brief Array*/
 typedef struct Sophon_Array_s    Sophon_Array;
+/**\brief Lexical token value*/
+typedef union Sophon_TokenValue_u Sophon_TokenValue;
+/**\brief Property iterator*/
+typedef struct Sophon_PropIter_s  Sophon_PropIter;
 
 #ifndef NULL
 #define NULL ((void*)0)

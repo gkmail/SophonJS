@@ -1,0 +1,55 @@
+Sophon JS: An embedded javascript engine
+
+license: BSD
+
+author:  L+#= +0=1 <gkmail@sina.com>
+
+features:
+  - ECMAscript 5 standard
+  - Small footprint
+  - Compile source code to byte code instruction
+  - Instruction file store and load function
+
+download:
+	git clone https://github.com/gkmail/SophonJS.git
+
+configure:
+	Edit config.mk file directly.
+
+	When you build SophonJS on Linux x86 32 bits platform, change the entry
+	"ARCH" to:
+
+		ARCH:=i686-linux
+
+	When you build SophonJS on Linux x86 64 bits platform, change the entry
+	"ARCH" to:
+
+		ARCH:=x86_64-linux
+
+	When you build SophonJS on Windows, change the entry "ARCH" to:
+
+		ARCH:=mingw32
+
+build:
+	Run the following command to build:
+
+		make
+
+	And run the following command to install library, program and header files:
+
+		make install
+
+	If you want to change the lexical analyzer and parser rule files, you should
+	download and build libtea firstly:
+
+		https://github.com/gkmail/tea.git
+
+	And then run:
+
+		make tools
+		make
+
+examples:
+	Run the following command to build examples:
+
+		make examples

@@ -32,9 +32,53 @@
 static void
 gc_mark_vm (Sophon_VM *vm)
 {
-	sophon_value_mark(vm, vm->excepv);
-	sophon_value_mark(vm, vm->labelv);
+	Sophon_Stack *stk;
 
-	sophon_value_mark(vm, vm->type_errv);
+	sophon_value_mark(vm, vm->retv);
+	sophon_value_mark(vm, vm->excepv);
+	sophon_value_mark(vm, vm->Arguments_protov);
+
+#define MARK_ERROR(name) sophon_value_mark(vm, vm->name);
+	SOPHON_FOR_EACH_ERROR(MARK_ERROR)
+
+#define MARK_STRING(name)\
+	gc_mark(vm, (Sophon_GCObject*)vm->name##_str);
+	SOPHON_FOR_EACH_STRING(MARK_STRING)
+
+#define MARK_INTERNAL_STRING(name, str)\
+	gc_mark(vm, (Sophon_GCObject*)vm->name##_str);
+	SOPHON_FOR_EACH_INTERNAL_STRING(MARK_INTERNAL_STRING)
+
+	stk = vm->stack;
+	while (stk) {
+		Sophon_Value *v, *vlast;
+
+		v = stk->v;
+		vlast = v + stk->vbuf_size;
+
+		while (v < vlast) {
+			sophon_value_mark(vm, *v);
+			v++;
+		}
+
+		sophon_value_mark(vm, stk->calleev);
+
+		if (stk->func)
+			gc_mark(vm, (Sophon_GCObject*)stk->func->module);
+
+		gc_mark(vm, (Sophon_GCObject*)stk->var_env);
+		gc_mark(vm, (Sophon_GCObject*)stk->lex_env);
+
+		stk = stk->bottom;
+	}
+
+	if (vm->parser_data)
+		gc_scan_parser(vm);
+
+	gc_mark(vm, (Sophon_GCObject*)vm->glob_module);
+
+#ifdef SOPHON_CONSOLE
+	sophon_hash_for_each(vm, &vm->timer_hash, gc_mark_value_key, NULL);
+#endif
 }
 

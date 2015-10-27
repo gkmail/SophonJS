@@ -1,7 +1,9 @@
 TARGET_SUFFIX:=$(TARGET)$(SLIB_SUFFIX)
 TARGET_FULL:=$(OUT)/$(TARGET_SUFFIX)
 
+ifneq ($(AUTO_BUILD), 0)
 all: $(TARGET_FULL)
+endif
 
 OBJS:=$(foreach src,$(SRCS),$(OUT)/$(dir $(src))$(TARGET_SUFFIX)-$(basename $(notdir $(src))).o)
 

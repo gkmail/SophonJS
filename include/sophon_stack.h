@@ -37,17 +37,20 @@ extern "C" {
 #endif
 
 #include "sophon_types.h"
+#include "sophon_property.h"
 
 /**\brief Stack entry*/
 struct Sophon_Stack_s {
 	Sophon_Stack   *bottom; /**< The bottom stack entry*/
 	Sophon_Frame   *var_env;/**< The variant frame*/
 	Sophon_Frame   *lex_env;/**< The lexical frame*/
-	Sophon_Closure *closure;/**< The current closure*/
+	Sophon_Value    calleev;/**< The callee closure value*/
+	Sophon_Function *func;  /**< The current function*/
+	Sophon_PropIter *pi_bottom; /**< The bottom property iterator*/
+	Sophon_U16      vbuf_size; /**< Value buffer size*/
 	Sophon_U16      ip;     /**< Instruction pointer*/
 	Sophon_U16      sp;     /**< Stack pointer*/
 	Sophon_U16      tp;     /**< Try stack pointer*/
-	Sophon_U16      bp;     /**< Block stack pointer*/
 	Sophon_Value    v[1];   /**< The stack value buffer*/
 };
 
@@ -55,11 +58,110 @@ struct Sophon_Stack_s {
 #define sophon_stack_deinit(vm)
 
 /**
- * \brief Push a stack entry
+ * \brief Push a global frame into the stack
  * \param[in] vm The current virtual machine
- * \return The new stack entry
+ * \param globv The global object value
+ * \param calleev The callee closure value
+ * \param[in] argv Input arguments
+ * \param argc The real arguments count
+ * \retval SOPHON_OK On success
+ * \retval <0 On error
  */
-extern Sophon_Stack* sophon_stack_push (Sophon_VM *vm);
+extern Sophon_Result sophon_stack_push_global (Sophon_VM *vm,
+						Sophon_Value globv,
+						Sophon_Value calleev,
+						Sophon_Value *argv,
+						Sophon_U8 argc);
+
+/**
+ * \brief Push a declaration frame into the stack
+ * \param[in] vm The current virtual machine
+ * \param thisv This value
+ * \param calleev The callee closure value
+ * \param[in] argv Input arguments
+ * \param argc The real arguments count
+ * \retval SOPHON_OK On success
+ * \retval <0 On error
+ */
+extern Sophon_Result sophon_stack_push_decl (Sophon_VM *vm,
+						Sophon_Value thisv,
+						Sophon_Value calleev,
+						Sophon_Value *argv,
+						Sophon_U8 argc);
+
+/**
+ * \brief Push a catch frame into the stack
+ * \param[in] vm The current virtual machine
+ * \param name The name of the exception binding
+ * \param excepv The exception value
+ * \retval SOPHON_OK On success
+ * \retval <0 On error
+ */
+extern Sophon_Result sophon_stack_push_catch (Sophon_VM *vm,
+						Sophon_String *name,
+						Sophon_Value excepv);
+
+/**
+ * \brief Push a with frame into the stack
+ * \param[in] vm The current virtual machine
+ * \param thisv This value
+ * \retval SOPHON_OK On success
+ * \retval <0 On error
+ */
+extern Sophon_Result sophon_stack_push_with (Sophon_VM *vm,
+						Sophon_Value thisv);
+
+/**
+ * \brief Pop the top stack entry
+ * \param[in] vm The current virtual machine
+ */
+extern void          sophon_stack_pop (Sophon_VM *vm);
+
+/**
+ * \brief Pop a frame from the stack
+ * \param[in] vm The current virtual machine
+ */
+extern void          sophon_stack_pop_frame (Sophon_VM *vm);
+
+/**
+ * \brief Delete a binding by its name
+ * \param[in] vm The current virtual machine
+ * \param name The binding name
+ * \return SOPHON_OK On success
+ * \retuen SOPHON_NENE The binding do not exist
+ * \retval <0 On error
+ */
+extern Sophon_Result sophon_stack_delete_binding (Sophon_VM *vm,
+						Sophon_String *name);
+
+/**
+ * \brief Get a binding value by its name
+ * \param[in] vm The current virtual machine
+ * \param name The binding name
+ * \param[out] getv Return the binding value
+ * \return SOPHON_OK On success
+ * \retval <0 On error
+ */
+extern Sophon_Result sophon_stack_get_binding (Sophon_VM *vm,
+						Sophon_String *name, Sophon_Value *getv);
+
+/**
+ * \brief Set a binding value by its name
+ * \param[in] vm The current virtual machine
+ * \param name The binding name
+ * \param setv The new binding value
+ * \return SOPHON_OK On success
+ * \retval <0 On error
+ */
+extern Sophon_Result sophon_stack_put_binding (Sophon_VM *vm,
+						Sophon_String *name, Sophon_Value setv);
+
+/**
+ * \brief Get this binding value
+ * \param[in] vm The current virtual machine
+ * \return This binding value
+ */
+extern Sophon_Value sophon_stack_get_this (Sophon_VM *vm);
 
 #ifdef __cplusplus
 }

@@ -1,4 +1,4 @@
-define build_obj=
+define build_obj
 obj=$$(OUT)/$$(dir $(1))$(2)-$$(basename $$(notdir $(1))).o
 dep:=$$(OUT)/$$(dir $(1))$(2)-$$(basename $$(notdir $(1))).dep
 -include $$(dep)
@@ -10,7 +10,7 @@ $$(obj): $(1)
 	$$(Q)$$(CC) $$(GLOBAL_CFLAGS) $(3) -c -MMD -MF $$(depfile) -o $$@ $$<
 endef
 
-define build_host_obj=
+define build_host_obj
 obj=$$(HOST_OUT)/$$(dir $(1))$(2)-$$(basename $$(notdir $(1))).o
 dep:=$$(HOST_OUT)/$$(dir $(1))$(2)-$$(basename $$(notdir $(1))).dep
 -include $$(dep)

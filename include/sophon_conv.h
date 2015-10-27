@@ -36,8 +36,7 @@
 extern "C" {
 #endif
 
-/**\brief Character encoding converter*/
-typedef Sophon_Ptr Sophon_Conv;
+#include "sophon_types.h"
 
 /**
  * \brief Create a new character encoding converter

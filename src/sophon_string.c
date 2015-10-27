@@ -37,53 +37,6 @@
 #include <sophon_conv.h>
 #include <sophon_debug.h>
 
-#ifdef SOPHON_UTF8_CHAR
-#define string_len(cstr)   sophon_strlen(cstr)
-#define string_cmp(s1, s2) sophon_strcmp(s1, s2)
-#else
-static Sophon_U32
-string_len(const Sophon_Char *str)
-{
-	const Sophon_Char *p = str;
-	Sophon_U32 len = 0;
-
-	if (!str)
-		return 0;
-
-	while(*p) {
-		len++;
-		p++;
-	}
-
-	return len;
-}
-
-static Sophon_Int
-string_cmp(const Sophon_Char *s1, const Sophon_Char *s2)
-{
-	Sophon_Int r;
-
-	SOPHON_ASSERT(s1 && s2);
-
-	if (s1 == s2)
-		return 0;
-
-	while (1) {
-		r = *s1 - *s2;
-		if (r)
-			return r;
-
-		if (!*s1)
-			break;
-
-		s1++;
-		s2++;
-	}
-
-	return 0;
-}
-#endif /*SOPHON_UTF8_CHAR*/
-
 Sophon_String*
 sophon_string_create (Sophon_VM *vm, const Sophon_Char *cstr)
 {
@@ -91,7 +44,7 @@ sophon_string_create (Sophon_VM *vm, const Sophon_Char *cstr)
 
 	SOPHON_ASSERT(vm);
 
-	len = string_len(cstr);
+	len = sophon_ucstrlen(cstr);
 	return sophon_string_from_chars(vm, cstr, len);
 }
 
@@ -104,21 +57,20 @@ sophon_string_from_chars (Sophon_VM *vm, const Sophon_Char *chars,
 
 	SOPHON_ASSERT(vm);
 
+	if (!len && vm->empty_str)
+		return vm->empty_str;
+
 	size = sizeof(Sophon_String) + len * sizeof(Sophon_Char);
 	str = (Sophon_String*)sophon_mm_alloc(vm, size);
 	if (!str)
 		return NULL;
 
-	SOPHON_GC_HEADER_INIT(str, SOPHON_GC_STRING);
+	SOPHON_GC_HEADER_INIT(str, SOPHON_GC_String);
 
-	if (chars && len) {
-		str->length = len;
+	str->length = len;
 
-		if (str->length) {
-			memcpy(str->chars, chars, sizeof(Sophon_Char) * len);
-		}
-	} else {
-		str->length = 0;
+	if (chars) {
+		sophon_memcpy(str->chars, chars, sizeof(Sophon_Char) * len);
 	}
 
 	str->chars[str->length] = 0;
@@ -127,7 +79,7 @@ sophon_string_from_chars (Sophon_VM *vm, const Sophon_Char *chars,
 	return str;
 }
 
-#ifndef SOPHON_UTF8_CHAR
+#ifndef SOPHON_8BITS_CHAR
 
 Sophon_String*
 sophon_string_from_utf8_cstr (Sophon_VM *vm, const char *cstr)
@@ -208,7 +160,7 @@ sophon_string_to_utf8_cstr (Sophon_VM *vm,
 	SOPHON_ASSERT(vm && str && buf && len);
 
 	in_buf   = sophon_string_chars(vm, str);
-	ulen     = sophon_string_len(vm, str) * sizeof(Sophon_Char);
+	ulen     = sophon_string_length(vm, str) * sizeof(Sophon_Char);
 	in_size  = ulen;
 	out_size = *len;
 
@@ -245,7 +197,7 @@ sophon_string_new_utf8_cstr (Sophon_VM *vm,
 
 	SOPHON_ASSERT(vm && str && pbuf && plen);
 
-	size = sophon_string_len(vm, str);
+	size = sophon_string_length(vm, str);
 	len  = SOPHON_UTF8_BUF_SIZE(size);
 	buf  = (char*)sophon_mm_alloc(vm, len);
 	if (! buf)
@@ -263,7 +215,7 @@ sophon_string_new_utf8_cstr (Sophon_VM *vm,
 	return r;
 }
 
-#else /*defined(SOPHON_UTF8_CHAR)*/
+#else /*defined(SOPHON_8BITS_CHAR)*/
 
 Sophon_Result
 sophon_string_to_utf8_cstr (Sophon_VM *vm,
@@ -274,10 +226,10 @@ sophon_string_to_utf8_cstr (Sophon_VM *vm,
 	Sophon_Char *cstr;
 	Sophon_U32 len;
 
-	SOPHON_ASSERT(vm && str && buf && len);
+	SOPHON_ASSERT(vm && str && buf && plen);
 
 	cstr = sophon_string_chars(vm, str);
-	len  = sophon_string_len(vm, str);
+	len  = sophon_string_length(vm, str);
 
 	if (len >= *plen)
 		return SOPHON_ERR_2BIG;
@@ -298,12 +250,12 @@ sophon_string_new_utf8_cstr (Sophon_VM *vm,
 	SOPHON_ASSERT(vm && str && pbuf && plen);
 
 	*pbuf = sophon_string_chars(vm, str);
-	*plen = sophon_string_len(vm, str);
+	*plen = sophon_string_length(vm, str);
 
 	return *plen;
 }
 
-#endif /*SOPHON_UTF8_CHAR*/
+#endif /*SOPHON_8BITS_CHAR*/
 
 void
 sophon_string_destroy (Sophon_VM *vm, Sophon_String *str)
@@ -313,7 +265,7 @@ sophon_string_destroy (Sophon_VM *vm, Sophon_String *str)
 	SOPHON_ASSERT(vm && str);
 
 	if (str->gc_flags & SOPHON_GC_FL_INTERN) {
-		sophon_hash_remove(vm, &vm->str_intern_hash, sophon_string_key,
+		 sophon_hash_remove(vm, &vm->str_intern_hash, sophon_string_key,
 					sophon_string_equal, str);
 	}
 
@@ -357,7 +309,226 @@ sophon_string_cmp (Sophon_VM *vm, Sophon_String *s1, Sophon_String *s2)
 	cs1 = sophon_string_chars(vm, s1);
 	cs2 = sophon_string_chars(vm, s2);
 
-	return string_cmp(cs1, cs2);
+	return sophon_ucstrcmp(cs1, cs2);
 }
 
+Sophon_Int
+sophon_string_casecmp (Sophon_VM *vm, Sophon_String *s1, Sophon_String *s2)
+{
+	Sophon_Char *cs1, *cs2;
+
+	SOPHON_ASSERT(vm && s1 && s2);
+
+	if(s1 == s2)
+		return 0;
+
+	cs1 = sophon_string_chars(vm, s1);
+	cs2 = sophon_string_chars(vm, s2);
+
+	return sophon_ucstrcasecmp(cs1, cs2);
+}
+
+Sophon_String*
+sophon_string_concat (Sophon_VM *vm, Sophon_String *s1, Sophon_String *s2)
+{
+	Sophon_U32 len1, len2;
+	Sophon_String *nstr;
+
+	SOPHON_ASSERT(vm && s1 && s2);
+
+	len1 = sophon_string_length(vm, s1);
+	len2 = sophon_string_length(vm, s2);
+
+	nstr = sophon_string_from_chars(vm, NULL, len1 + len2);
+	if (nstr) {
+		Sophon_Char *dst = nstr->chars;
+		Sophon_Char *src;
+
+		if (len1) {
+			src = sophon_string_chars(vm, s1);
+			sophon_memcpy(dst, src, len1 * sizeof(Sophon_Char));
+		}
+
+		if (len2) {
+			src = sophon_string_chars(vm, s2);
+			sophon_memcpy(dst + len1, src, len2 * sizeof(Sophon_Char));
+		}
+	}
+
+	return nstr;
+}
+
+#define HEX_CHAR(n) (((n) < 10) ? (n) + '0' : (n) - 10 + 'a')
+
+Sophon_String*
+sophon_string_escape (Sophon_VM *vm, Sophon_String *str)
+{
+	Sophon_String *nstr;
+	Sophon_Char *cstr = sophon_string_chars(vm, str);
+	Sophon_U32 len = sophon_string_length(vm, str);
+	Sophon_Char *buf, *src, *dst;
+	
+	buf = sophon_mm_alloc_ensure(vm, len * 6 * sizeof(Sophon_Char));
+	src = cstr;
+	dst = buf;
+	
+	while (*src) {
+		if (*src == '\n') {
+			*dst++ = '\\';
+			*dst++ = 'n';
+		} else if (*src == '\r') {
+			*dst++ = '\\';
+			*dst++ = 'r';
+		} else if (*src == '\v') {
+			*dst++ = '\\';
+			*dst++ = 'v';
+		} else if (*src == '\f') {
+			*dst++ = '\\';
+			*dst++ = 'f';
+		} else if (*src == '\b') {
+			*dst++ = '\\';
+			*dst++ = 'b';
+		} else if (*src == '\t') {
+			*dst++ = '\\';
+			*dst++ = 't';
+		} else if (*src == 0) {
+			*dst++ = '\\';
+			*dst++ = '0';
+		} else if (*src == '\\') {
+			*dst++ = '\\';
+			*dst++ = '\\';
+		} else if (*src == '\'') {
+			*dst++ = '\\';
+			*dst++ = '\'';
+		} else if (*src == '\"') {
+			*dst++ = '\\';
+			*dst++ = '\"';
+		} else if (sophon_isprint(*src)) {
+			*dst++ = *src;
+		} else if (((Sophon_U16)(*src)) <= 0xFF) {
+			*dst++ = '\\';
+			*dst++ = 'x';
+			*dst++ = HEX_CHAR(((*src) >> 4) & 0x0F);
+			*dst++ = HEX_CHAR((*src) & 0x0F);
+		} else {
+			*dst++ = '\\';
+			*dst++ = 'u';
+			*dst++ = HEX_CHAR(((*src) >> 12) & 0x0F);
+			*dst++ = HEX_CHAR(((*src) >> 8) & 0x0F);
+			*dst++ = HEX_CHAR(((*src) >> 4) & 0x0F);
+			*dst++ = HEX_CHAR((*src) & 0x0F);
+		}
+
+		src++;
+	}
+	
+	nstr = sophon_string_from_chars(vm, buf, dst - buf);
+	sophon_mm_free(vm, buf, len * 6 * sizeof(Sophon_Char));
+
+	return nstr;
+}
+
+static Sophon_Int
+hex_val (Sophon_Char ch)
+{
+	if ((ch >= '0') && (ch <= '9'))
+		return ch - '0';
+	else if ((ch >= 'a') && (ch <= 'f'))
+		return ch - 'a' + 10;
+	else
+		return ch - 'A' + 10;
+}
+
+Sophon_String*
+sophon_string_unescape (Sophon_VM *vm, Sophon_String *str)
+{
+	Sophon_String *nstr;
+	Sophon_Char *cstr = sophon_string_chars(vm, str);
+	Sophon_U32 len = sophon_string_length(vm, str);
+	Sophon_Char *buf, *src, *dst;
+	Sophon_Result r = SOPHON_ERR_LEX;
+	
+	buf = sophon_mm_alloc_ensure(vm, len * sizeof(Sophon_Char));
+	src = cstr;
+	dst = buf;
+	
+	while (*src) {
+		if (*src != '\\') {
+			*dst++ = *src++;
+		} else {
+			switch (src[1]) {
+				case 'n':
+					*dst++ = '\n';
+					src += 2;
+					break;
+				case 'r':
+					*dst++ = '\r';
+					src += 2;
+					break;
+				case 'v':
+					*dst++ = '\v';
+					src += 2;
+					break;
+				case 'f':
+					*dst++ = '\f';
+					src += 2;
+					break;
+				case 'b':
+					*dst++ = '\b';
+					src += 2;
+					break;
+				case 't':
+					*dst++ = '\t';
+					src += 2;
+					break;
+				case '0':
+					*dst++ = '\0';
+					src += 2;
+					break;
+				case 'x':
+					if (!sophon_isxdigit(src[2]) ||
+								!sophon_isxdigit(src[3]))
+						goto end;
+					*dst++ = (hex_val(src[2]) << 4) |
+								hex_val(src[3]);
+					src += 4;
+					break;
+				case 'u':
+					if (!sophon_isxdigit(src[2]) ||
+								!sophon_isxdigit(src[3]) ||
+								!sophon_isxdigit(src[4]) ||
+								!sophon_isxdigit(src[5]))
+						goto end;
+					*dst++ = (hex_val(src[2]) << 12) |
+								(hex_val(src[3]) << 8) |
+								(hex_val(src[4]) << 4) |
+								hex_val(src[5]);
+					src += 6;
+					break;
+				default:
+					if (src[1]) {
+						*dst++ = src[1];
+						src += 2;
+					} else {
+						goto end;
+					}
+					break;
+			}
+		}
+	}
+
+	r = SOPHON_OK;
+	
+end:
+	if (r == SOPHON_OK) {
+		nstr = sophon_string_from_chars(vm, buf, dst - buf);
+	} else {
+		sophon_throw(vm, vm->SyntaxError, "Illegal character");
+		nstr = NULL;
+	}
+
+	sophon_mm_free(vm, buf, len * sizeof(Sophon_Char));
+
+	return nstr;
+}
 

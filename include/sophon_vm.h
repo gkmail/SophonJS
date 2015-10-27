@@ -39,8 +39,81 @@ extern "C" {
 #include "sophon_types.h"
 #include "sophon_value.h"
 #include "sophon_hash.h"
-#include "sophon_double_pool.h"
+#include "sophon_number_pool.h"
 #include "sophon_gc.h"
+#include "sophon_closure.h"
+
+#define SOPHON_FOR_EACH_ERROR(e)\
+	e(Error)\
+	e(TypeError)\
+	e(SyntaxError)\
+	e(RangeError)\
+	e(EvalError)\
+	e(ReferenceError)\
+	e(URIError)
+
+#define SOPHON_FOR_EACH_INTERNAL_STRING(s)\
+	s(use_strict, "use strict")\
+	s(class,      "[Class]")\
+	s(call,       "[Call]")\
+	s(proto,      "[Proto]")\
+	s(empty,      "")\
+	s(comma,      ",")\
+	s(lb,         "{")\
+	s(rb,         "}")\
+	s(ls,         "[")\
+	s(rs,         "]")\
+	s(quot,       "\"")\
+	s(div,        "/")\
+	s(colons,     ":")\
+	s(space,      " ")\
+	s(dollar,     "$")
+
+#define SOPHON_FOR_EACH_STRING(s)\
+	s(Object)\
+	s(Boolean)\
+	s(Number)\
+	s(String)\
+	s(Function)\
+	s(Array)\
+	s(Arguments)\
+	s(RegExp)\
+	s(Date)\
+	s(arguments)\
+	s(caller)\
+	s(callee)\
+	s(name)\
+	s(length)\
+	s(eval)\
+	s(null)\
+	s(undefined)\
+	s(object)\
+	s(string)\
+	s(number)\
+	s(function)\
+	s(boolean)\
+	s(true)\
+	s(false)\
+	s(NaN)\
+	s(Infinity)\
+	s(prototype)\
+	s(message)\
+	s(value)\
+	s(writable)\
+	s(get)\
+	s(set)\
+	s(enumerable)\
+	s(configurable)\
+	s(toString)\
+	s(toJSON)\
+	s(valueOf)\
+	s(constructor)\
+	s(index)\
+	s(input)\
+	s(exec)\
+	s(JSON)\
+	s(stringify)\
+	SOPHON_FOR_EACH_ERROR(s)
 
 /**\brief Virtual machine*/
 struct Sophon_VM_s {
@@ -48,10 +121,10 @@ struct Sophon_VM_s {
 	Sophon_U32 mm_curr_used;
 	Sophon_U32 mm_max_used;
 
-	/*Double pool*/
-	Sophon_Hash         dp_hash;
-	Sophon_DoublePool  *dp_free_list;
-	Sophon_DoublePool  *dp_full_list;
+	/*Number pool*/
+	Sophon_Hash         np_hash;
+	Sophon_NumberPool  *np_free_list;
+	Sophon_NumberPool  *np_full_list;
 
 	/*Garbage collector*/
 	Sophon_Bool       gc_running;
@@ -67,25 +140,60 @@ struct Sophon_VM_s {
 	/*String intern hash table*/
 	Sophon_Hash       str_intern_hash;
 
+	/*Lexical analyser*/
+	Sophon_Ptr        lex_data;
+
+	/*Parser*/
+	Sophon_Ptr        parser_data;
+
 	/*Stack*/
 	Sophon_Stack     *stack;
 
-	/*Exception*/
+	/*Global module*/
+	Sophon_Module    *glob_module;
+
+	/*Basic object prototypes*/
+	Sophon_Value      Object_protov;
+	Sophon_Value      Boolean_protov;
+	Sophon_Value      Number_protov;
+	Sophon_Value      String_protov;
+	Sophon_Value      Function_protov;
+	Sophon_Value      Array_protov;
+	Sophon_Value      Arguments_protov;
+	Sophon_Value      RegExp_protov;
+	Sophon_Value      Date_protov;
+
+	/*Return value*/
+	Sophon_Value      retv;
+
+	/*Exception value*/
 	Sophon_Value      excepv;
 
-	/*Break/Continue label value*/
-	Sophon_Value      labelv;
-
 	/*Errors*/
-	Sophon_Value      type_errv;
+#define DECL_ERROR(name) Sophon_Value name;
+	SOPHON_FOR_EACH_ERROR(DECL_ERROR)
+
+	/*Strings*/
+#define DECL_INTERNAL_STRING(name, str) Sophon_String *name##_str;
+	SOPHON_FOR_EACH_INTERNAL_STRING(DECL_INTERNAL_STRING)
+#define DECL_STRING(name) Sophon_String *name##_str;
+	SOPHON_FOR_EACH_STRING(DECL_STRING)
+
+#ifdef SOPHON_DATE
+	/*Time zone offset*/
+	Sophon_Int        tz_offset;
+#endif
+
+#ifdef SOPHON_CONSOLE
+	Sophon_Hash       timer_hash;
+#endif
+
+	/*Property iterator stack*/
+	Sophon_PropIter  *pi_stack;
 };
 
-/**\brief Throw an exception*/
-#define sophon_throw(vm, v)\
-	SOPHON_MACRO_BEGIN\
-		if (!SOPHON_VALUE_IS_UNDEFINED((vm)->excepv))\
-			(vm)->excepv = (v);\
-	SOPHON_MACRO_END
+/**\brief Check if the virtual machine has exception*/
+#define sophon_has_exception(vm) (!sophon_value_is_undefined(vm->excepv))
 
 /**
  * \brief Create a new virtual machine
@@ -99,6 +207,46 @@ extern Sophon_VM* sophon_vm_create (void);
  * \param[in] vm The virtual machine to be freed
  */
 extern void       sophon_vm_destroy (Sophon_VM *vm);
+
+/**
+ * \brief Throw an exception and message string
+ * \param[in] vm The current virtual machine
+ * \param excepv The exception value
+ * \param[in] msg Error message
+ */
+extern void       sophon_throw (Sophon_VM *vm, Sophon_Value excepv,
+					const char *msg);
+
+/**
+ * \brief Throw an exception value
+ * \param[in] vm The current virtual machine
+ * \param excepv The exception value
+ * \param[in] msg Error message
+ */
+extern void       sophon_throw_value (Sophon_VM *vm, Sophon_Value excepv);
+
+/**
+ * \brief Catch the exception
+ * \param[in] vm The current virtual machine
+ * \param[out] excepv Return the exception value
+ * \retval SOPHON_TRUE The exception is catched
+ * \retval SOPHON_FALSE No exception is set
+ */
+extern Sophon_Bool sophon_catch (Sophon_VM *vm, Sophon_Value *excepv);
+
+/**
+ * \brief Check if the virtual machine is in strict mode
+ * \param[in] vm The current virtual machine
+ * \retval SOPHON_TRUE Virtual machine is in strict mode
+ * \retval SOPHON_TRUE Virtual machine is not in strict mode
+ */
+extern Sophon_Bool sophon_strict (Sophon_VM *vm);
+
+/**
+ * \brief Trace the stack
+ * \param[in] vm The current virtual machine
+ */
+extern void sophon_trace (Sophon_VM *vm);
 
 #ifdef __cplusplus
 }

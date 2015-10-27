@@ -39,17 +39,26 @@ extern "C" {
 #include "sophon_types.h"
 
 /*GC object types*/
-#define SOPHON_GC_STRING        0
-#define SOPHON_GC_OBJECT        1
-#define SOPHON_GC_CLOSURE       2
-#define SOPHON_GC_ARRAY         4
+#define SOPHON_GC_String        0
+#define SOPHON_GC_Object        1
+#define SOPHON_GC_Closure       2
+#define SOPHON_GC_Array         3
+#define SOPHON_GC_GlobalFrame   4
+#define SOPHON_GC_DeclFrame     5
+#define SOPHON_GC_CatchFrame    6
+#define SOPHON_GC_WithFrame     7
+#define SOPHON_GC_Module        8
+#define SOPHON_GC_RegExp        9
 
 /*GC object flags*/
 #define SOPHON_GC_FL_MARKED  1
 #define SOPHON_GC_FL_MANAGED 2
 #define SOPHON_GC_FL_INTERN  4
-#define SOPHON_GC_FL_CLOSURE 8
-#define SOPHON_GC_FL_ARRAY   16
+#define SOPHON_GC_FL_EXTENSIBLE  8
+#define SOPHON_GC_FL_BIND    16
+#define SOPHON_GC_FL_NATIVE  32
+#define SOPHON_GC_FL_STRICT  64
+#define SOPHON_GC_FL_PRIM    128
 
 #define SOPHON_GC_CLOSURE_SIZE\
 	SOPHON_MAX(sizeof(Sophon_Object), sizeof(Sophon_Closure))
@@ -59,8 +68,8 @@ extern "C" {
 /*GC object header*/
 #define SOPHON_GC_HEADER \
 	Sophon_GCObject *gc_next; \
-	Sophon_U8        gc_type; \
-	Sophon_U8        gc_flags;
+	Sophon_U16       gc_flags;\
+	Sophon_U8        gc_type;
 
 #define SOPHON_GC_HEADER_INIT(obj, type) \
 	SOPHON_MACRO_BEGIN \
@@ -68,15 +77,15 @@ extern "C" {
 		(obj)->gc_flags = 0; \
 	SOPHON_MACRO_END
 
-typedef struct Sophon_GCObject_s Sophon_GCObject;
 struct Sophon_GCObject_s {
 	SOPHON_GC_HEADER
 };
 
+/**\brief GC object buffer*/
 typedef struct {
-	Sophon_GCObject **objs;
-	Sophon_U32        count;
-	Sophon_U32        cap;
+	Sophon_GCObject **objs;  /**< Object pointer buffer*/
+	Sophon_U32        count; /**< Object pointer count in the buffer*/
+	Sophon_U32        cap;   /**< Capability of the buffer(allocated size)*/
 } Sophon_GCObjectBuf;
 
 extern void sophon_gc_init (Sophon_VM *vm);
@@ -110,6 +119,13 @@ extern void sophon_gc_add_root (Sophon_VM *vm, Sophon_GCObject *obj);
  * \param[in] obj The root object
  */
 extern void sophon_gc_remove_root (Sophon_VM *vm, Sophon_GCObject *obj);
+
+/**
+ * \brief Add a value to the new borned object buffer
+ * \param[in] vm The current virtual machine
+ * \param[in] obj The root object
+ */
+extern void sophon_gc_add_nb (Sophon_VM *vm, Sophon_Value v);
 
 /**
  * \brief Run the garbage collection process

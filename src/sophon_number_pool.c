@@ -32,40 +32,40 @@
 #include <sophon_types.h>
 #include <sophon_mm.h>
 #include <sophon_util.h>
-#include <sophon_double_pool.h>
+#include <sophon_number_pool.h>
 #include <sophon_hash.h>
 #include <sophon_gc.h>
 #include <sophon_vm.h>
 #include <sophon_debug.h>
 
-#ifndef SOPHON_DOUBLE_POOL_SIZE_SHIFT
-	#define SOPHON_DOUBLE_POOL_SIZE_SHIFT 12
+#ifndef SOPHON_NUMBER_POOL_SIZE_SHIFT
+	#define SOPHON_NUMBER_POOL_SIZE_SHIFT 12
 #endif
 
-#define SOPHON_DOUBLE_POOL_SIZE (1 << SOPHON_DOUBLE_POOL_SIZE_SHIFT)
+#define SOPHON_NUMBER_POOL_SIZE (1 << SOPHON_NUMBER_POOL_SIZE_SHIFT)
 
-#define SOPHON_DOUBLE_ENTRY_COUNT \
-	(((SOPHON_DOUBLE_POOL_SIZE - sizeof(Sophon_DoublePool)) * 8 / \
-			(sizeof(Sophon_Double) * 8 + 2)) & ~0x1F)
+#define SOPHON_NUMBER_ENTRY_COUNT \
+	(((SOPHON_NUMBER_POOL_SIZE - sizeof(Sophon_NumberPool)) * 8 / \
+			(sizeof(Sophon_Number) * 8 + 2)) & ~0x1F)
 
 static void
-dp_free (Sophon_VM *vm, Sophon_DoublePool *pool)
+np_free (Sophon_VM *vm, Sophon_NumberPool *pool)
 {
 	Sophon_UIntPtr key;
 
-	key = ((Sophon_UIntPtr)pool) >> SOPHON_DOUBLE_POOL_SIZE_SHIFT;
-	sophon_hash_remove(vm, &vm->dp_hash,
+	key = ((Sophon_UIntPtr)pool) >> SOPHON_NUMBER_POOL_SIZE_SHIFT;
+	sophon_hash_remove(vm, &vm->np_hash,
 				sophon_direct_key,
 				sophon_direct_equal,
 				(Sophon_Ptr)key);
 
-	sophon_mm_free(vm, pool, SOPHON_DOUBLE_POOL_SIZE);
+	sophon_mm_free(vm, pool, SOPHON_NUMBER_POOL_SIZE);
 
-	SOPHON_INFO(("free double pool %p", pool));
+	SOPHON_INFO(("free number pool %p", pool));
 }
 
 static void
-dp_sweep (Sophon_VM *vm, Sophon_DoublePool *pool)
+np_sweep (Sophon_VM *vm, Sophon_NumberPool *pool)
 {
 	Sophon_U32 *used, *mark;
 	Sophon_Int i, off, b;
@@ -74,16 +74,16 @@ dp_sweep (Sophon_VM *vm, Sophon_DoublePool *pool)
 	mark = pool->mark_flags;
 	off  = 0;
 
-	for (i = 0; i < SOPHON_DOUBLE_ENTRY_COUNT / 32; i++) {
+	for (i = 0; i < SOPHON_NUMBER_ENTRY_COUNT / 32; i++) {
 		if (*used) {
 			for (b = 0; b < 32; b++){
 				if (*used & (1 << b)) {
 					if (*mark & (1 << b)) {
 						*mark &= ~(1 << b);
 					} else {
-						Sophon_DoubleEntry *ent;
+						Sophon_NumberEntry *ent;
 
-						ent = (Sophon_DoubleEntry*)(pool->entries + off + b);
+						ent = (Sophon_NumberEntry*)(pool->entries + off + b);
 						ent->next = pool->free_list;
 						pool->free_list = ent;
 						pool->free_count++;
@@ -100,26 +100,26 @@ dp_sweep (Sophon_VM *vm, Sophon_DoublePool *pool)
 	}
 }
 
-static Sophon_DoublePool*
-dp_alloc (Sophon_VM *vm)
+static Sophon_NumberPool*
+np_alloc (Sophon_VM *vm)
 {
-	Sophon_DoubleEntry **pent;
+	Sophon_NumberEntry **pent;
 	Sophon_HashEntry *hent;
 	Sophon_Int i;
-	Sophon_DoublePool *pool;
+	Sophon_NumberPool *pool;
 	Sophon_UIntPtr key;
-	Sophon_Double *pd;
+	Sophon_Number *pd;
 	Sophon_Result r;
 
-	pool = (Sophon_DoublePool*)sophon_mm_alloc_ensure(vm,
-				SOPHON_DOUBLE_POOL_SIZE);
-	SOPHON_INFO(("allocate double pool %p, size %d, double count %d",
+	pool = (Sophon_NumberPool*)sophon_mm_alloc_ensure(vm,
+				SOPHON_NUMBER_POOL_SIZE);
+	SOPHON_INFO(("allocate number pool %p, size %d, double count %d",
 				pool,
-				(int)SOPHON_DOUBLE_POOL_SIZE,
-				(int)SOPHON_DOUBLE_ENTRY_COUNT));
+				(int)SOPHON_NUMBER_POOL_SIZE,
+				(int)SOPHON_NUMBER_ENTRY_COUNT));
 
-	key = ((Sophon_UIntPtr)pool) >> SOPHON_DOUBLE_POOL_SIZE_SHIFT;
-	r = sophon_hash_add(vm, &vm->dp_hash,
+	key = ((Sophon_UIntPtr)pool) >> SOPHON_NUMBER_POOL_SIZE_SHIFT;
+	r = sophon_hash_add(vm, &vm->np_hash,
 				sophon_direct_key,
 				sophon_direct_equal,
 				(Sophon_Ptr)key,
@@ -129,93 +129,93 @@ dp_alloc (Sophon_VM *vm)
 
 	hent->value = pool;
 
-	pool->free_count = SOPHON_DOUBLE_ENTRY_COUNT;
+	pool->free_count = SOPHON_NUMBER_ENTRY_COUNT;
 	pool->used_flags = (Sophon_U32*)(pool + 1);
-	pool->mark_flags = pool->used_flags + (SOPHON_DOUBLE_ENTRY_COUNT / 32);
+	pool->mark_flags = pool->used_flags + (SOPHON_NUMBER_ENTRY_COUNT / 32);
 
-	sophon_memset(pool->mark_flags, 0, SOPHON_DOUBLE_ENTRY_COUNT / 4);
+	sophon_memset(pool->mark_flags, 0, SOPHON_NUMBER_ENTRY_COUNT / 4);
 
-	pool->entries    = (Sophon_Double*)
-			(pool->mark_flags + (SOPHON_DOUBLE_ENTRY_COUNT / 32));
+	pool->entries    = (Sophon_Number*)
+			(pool->mark_flags + (SOPHON_NUMBER_ENTRY_COUNT / 32));
 
 	pent = &pool->free_list;
 	pd   = pool->entries;
 
-	for (i = 0; i < SOPHON_DOUBLE_ENTRY_COUNT; i++) {
-		*pent = (Sophon_DoubleEntry*)pd;
-		pent = &(((Sophon_DoubleEntry*)pd)->next);
+	for (i = 0; i < SOPHON_NUMBER_ENTRY_COUNT; i++) {
+		*pent = (Sophon_NumberEntry*)pd;
+		pent = &(((Sophon_NumberEntry*)pd)->next);
 		pd++;
 	}
 
 	*pent = NULL;
 
-	SOPHON_ASSERT((Sophon_U8*)pent < ((Sophon_U8*)pool) + SOPHON_DOUBLE_POOL_SIZE);
+	SOPHON_ASSERT((Sophon_U8*)pent < ((Sophon_U8*)pool) + SOPHON_NUMBER_POOL_SIZE);
 
-	pool->next = vm->dp_free_list;
-	vm->dp_free_list = pool;
+	pool->next = vm->np_free_list;
+	vm->np_free_list = pool;
 
 	return pool;
 }
 
 void
-sophon_double_pool_init (Sophon_VM *vm)
+sophon_number_pool_init (Sophon_VM *vm)
 {
-	sophon_hash_init(vm, &vm->dp_hash);
-	vm->dp_free_list = NULL;
-	vm->dp_full_list = NULL;
+	sophon_hash_init(vm, &vm->np_hash);
+	vm->np_free_list = NULL;
+	vm->np_full_list = NULL;
 }
 
 void
-sophon_double_pool_deinit (Sophon_VM *vm)
+sophon_number_pool_deinit (Sophon_VM *vm)
 {
-	Sophon_DoublePool *p, *np;
+	Sophon_NumberPool *p, *np;
 
-	for (p = vm->dp_free_list; p; p = np) {
+	for (p = vm->np_free_list; p; p = np) {
 		np = p->next;
-		sophon_mm_free(vm, p, SOPHON_DOUBLE_POOL_SIZE);
+		sophon_mm_free(vm, p, SOPHON_NUMBER_POOL_SIZE);
 	}
 
-	for (p = vm->dp_full_list; p; p = np) {
+	for (p = vm->np_full_list; p; p = np) {
 		np = p->next;
-		sophon_mm_free(vm, p, SOPHON_DOUBLE_POOL_SIZE);
+		sophon_mm_free(vm, p, SOPHON_NUMBER_POOL_SIZE);
 	}
 
-	sophon_hash_deinit(vm, &vm->dp_hash);
+	sophon_hash_deinit(vm, &vm->np_hash);
 }
 
 void
-sophon_double_pool_sweep (Sophon_VM *vm)
+sophon_number_pool_sweep (Sophon_VM *vm)
 {
-	Sophon_DoublePool *p, *np, **pp;
+	Sophon_NumberPool *p, *np, **pp;
 
-	SOPHON_INFO(("sweep double pool"));
+	SOPHON_INFO(("sweep number pool"));
 
-	pp = &vm->dp_free_list;
-	for (p = vm->dp_free_list; p; p = np) {
+	pp = &vm->np_free_list;
+	for (p = vm->np_free_list; p; p = np) {
 		np = p->next;
-		dp_sweep(vm, p);
+		np_sweep(vm, p);
 
-		if (p->free_count == SOPHON_DOUBLE_ENTRY_COUNT) {
+		if (p->free_count == SOPHON_NUMBER_ENTRY_COUNT) {
 			*pp = np;
-			dp_free(vm, p);
+			np_free(vm, p);
 		} else {
 			pp = &p->next;
 		}
 	}
 
-	pp = &vm->dp_full_list;
-	for (p = vm->dp_full_list; p; p = np) {
+	pp = &vm->np_full_list;
+	for (p = vm->np_full_list; p; p = np) {
 		np = p->next;
-		dp_sweep(vm, p);
+		np_sweep(vm, p);
 
 		if (p->free_list) {
 			*pp = np;
 
-			if (p->free_count == SOPHON_DOUBLE_ENTRY_COUNT) {
-				dp_free(vm, p);
+			if (p->free_count == SOPHON_NUMBER_ENTRY_COUNT) {
+				np_free(vm, p);
 			} else {
-				p->next = vm->dp_free_list;
-				vm->dp_free_list = p;
+				p->next = vm->np_free_list;
+				vm->np_free_list = p;
 			}
 		} else {
 			pp = &p->next;
@@ -224,19 +224,19 @@ sophon_double_pool_sweep (Sophon_VM *vm)
 }
 
 void
-sophon_double_mark (Sophon_VM *vm, Sophon_Value v)
+sophon_number_mark (Sophon_VM *vm, Sophon_Value v)
 {
 	Sophon_UIntPtr key;
-	Sophon_Double *ptr;
+	Sophon_Number *ptr;
 	Sophon_HashEntry *ent;
-	Sophon_DoublePool *pool;
+	Sophon_NumberPool *pool;
 	Sophon_U32 id;
 	Sophon_Result r;
 
-	ptr = (Sophon_Double*)v;
-	key = ((Sophon_UIntPtr)ptr) >> SOPHON_DOUBLE_POOL_SIZE_SHIFT;
+	ptr = (Sophon_Number*)(((Sophon_UIntPtr)v) & ~SOPHON_VALUE_TYPE_MASK);
+	key = ((Sophon_UIntPtr)ptr) >> SOPHON_NUMBER_POOL_SIZE_SHIFT;
 
-	r = sophon_hash_lookup(vm, &vm->dp_hash,
+	r = sophon_hash_lookup(vm, &vm->np_hash,
 				sophon_direct_key,
 				sophon_direct_equal,
 				(Sophon_Ptr)key,
@@ -247,7 +247,7 @@ sophon_double_mark (Sophon_VM *vm, Sophon_Value v)
 	if (r == SOPHON_NONE) {
 		key--;
 
-		r = sophon_hash_lookup(vm, &vm->dp_hash,
+		r = sophon_hash_lookup(vm, &vm->np_hash,
 					sophon_direct_key,
 					sophon_direct_equal,
 					(Sophon_Ptr)key,
@@ -255,7 +255,7 @@ sophon_double_mark (Sophon_VM *vm, Sophon_Value v)
 		SOPHON_ASSERT(r == SOPHON_OK);
 	}
 
-	pool = (Sophon_DoublePool*)ent->value;
+	pool = (Sophon_NumberPool*)ent->value;
 	id = ptr - pool->entries;
 
 	SOPHON_ASSERT(ptr == (pool->entries + id));
@@ -265,26 +265,26 @@ sophon_double_mark (Sophon_VM *vm, Sophon_Value v)
 }
 
 void
-sophon_value_set_double_real (Sophon_VM *vm, Sophon_Value *v, Sophon_Double d)
+sophon_value_set_number_real (Sophon_VM *vm, Sophon_Value *v, Sophon_Number d)
 {
-	Sophon_DoublePool *pool;
-	Sophon_Double *pd;
+	Sophon_NumberPool *pool;
+	Sophon_Number *pd;
 	Sophon_U32 id;
-	Sophon_DoubleEntry *ent;
+	Sophon_NumberEntry *ent;
 
 	SOPHON_ASSERT(vm && v);
 
-	pool = vm->dp_free_list;
+	pool = vm->np_free_list;
 
 	/*Allocate a new pool*/
 	if (!pool) {
 		/*Try to run GC*/
 		sophon_gc_check(vm);
 
-		pool = vm->dp_free_list;
+		pool = vm->np_free_list;
 
 		if (!pool) {
-			pool = dp_alloc(vm);
+			pool = np_alloc(vm);
 			if (! pool) {
 				sophon_nomem();
 			}
@@ -296,22 +296,25 @@ sophon_value_set_double_real (Sophon_VM *vm, Sophon_Value *v, Sophon_Double d)
 	pool->free_list = ent->next;
 	pool->free_count--;
 
-	pd = (Sophon_Double*)ent;
+	pd = (Sophon_Number*)ent;
 	*pd = d;
 
-	SOPHON_ASSERT((Sophon_U8*)pd < ((Sophon_U8*)pool) + SOPHON_DOUBLE_POOL_SIZE);
+	SOPHON_ASSERT((Sophon_U8*)pd < ((Sophon_U8*)pool) + SOPHON_NUMBER_POOL_SIZE);
 
 	id = pd - pool->entries;
 	pool->used_flags[id >> 5] |= 1 << (id & 0x1F);
 
-	SOPHON_ASSERT(id < SOPHON_DOUBLE_ENTRY_COUNT);
+	SOPHON_ASSERT(id < SOPHON_NUMBER_ENTRY_COUNT);
 
-	*v = ((Sophon_Value)pd) | SOPHON_VALUE_TYPE_DOUBLE;
+	*v = ((Sophon_Value)pd) | SOPHON_VALUE_TYPE_NUMBER;
+
+	/*Add it to the new borned buffer*/
+	sophon_gc_add_nb(vm, *v);
 
 	if (! pool->free_list){
-		vm->dp_free_list = pool->next;
-		pool->next = vm->dp_full_list;
-		vm->dp_full_list = pool;
+		vm->np_free_list = pool->next;
+		pool->next = vm->np_full_list;
+		vm->np_full_list = pool;
 	}
 }
 
