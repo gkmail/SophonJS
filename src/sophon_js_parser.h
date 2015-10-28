@@ -249,7 +249,8 @@ typedef enum {
 	R_OBJECT_BEGIN,	/* 125 */
 	R_VAR_STATEMENT,	/* 126 */
 	R_DEBUGGER,	/* 127 */
-	R_ACCEPT,	/* 128 */
+	R_FRAME_BEGIN,	/* 128 */
+	R_ACCEPT,	/* 129 */
 	R_END
 } ParserReduceType;
 #define N_ERROR    0xFFF

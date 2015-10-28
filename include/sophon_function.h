@@ -74,7 +74,6 @@ typedef struct {
 /**\brief Function*/
 struct Sophon_Function_s {
 	Sophon_Module *module;    /**< The module contains this function*/
-	Sophon_Function *container; /**< The container function*/
 	Sophon_Hash    var_hash;  /**< Variants and arguments hash table*/
 	Sophon_String *name;      /**< The name of the function*/
 	Sophon_U8      flags;     /**< The function's flags*/

@@ -67,6 +67,8 @@
 #define UNDEFINED(v)       sophon_value_set_undefined(vm, v)
 #define GET_STRING(v)      ((Sophon_String*)SOPHON_VALUE_GET_GC(v))
 #define APPEND             parser_append_ops
+#define FUNC(n)            (&p->func_stack[p->func_top-1-(n)])
+#define FRAME(n)           (&p->frame_stack[p->frame_top-1-(n)])
 
 static const Sophon_U8 parser_op_model_table[] = {
 #define OP_MODEL(name, model, stk) MODEL_##model,
@@ -768,51 +770,96 @@ parser_pop_obj (Sophon_VM *vm)
 	sophon_hash_deinit(vm, &obj->prop_hash);
 }
 
+/*Push a new frame into the stack*/
+static void
+parser_push_frame (Sophon_VM *vm)
+{
+	Sophon_ParserData *p = (Sophon_ParserData*)vm->parser_data;
+	Sophon_ParserFrame *frame;
+
+	if (p->frame_top >= SOPHON_PARSER_FRAME_STACK_SIZE)
+		sophon_fatal("frame nesting overflow");
+
+	frame = &p->frame_stack[p->frame_top++];
+	frame->ops = NULL;
+}
+
+/*Pop a frame from the stack*/
+static void
+parser_pop_frame (Sophon_VM *vm)
+{
+	Sophon_ParserData *p = (Sophon_ParserData*)vm->parser_data;
+	Sophon_ParserFrame *frame;
+
+	SOPHON_ASSERT(p->frame_top > 0);
+
+	frame = &p->frame_stack[p->frame_top - 1];
+	parser_free_ops(vm, frame->ops);
+	p->frame_top--;
+}
+
 /*Push a new function into the stack*/
 static void
 parser_push_func (Sophon_VM *vm, Sophon_String *name)
 {
 	Sophon_ParserData *p = (Sophon_ParserData*)vm->parser_data;
 	Sophon_Function *func, *container;
+	Sophon_ParserFunc *stk;
 	Sophon_U32 flags = 0;
 	Sophon_U32 func_id;
 
-	container = p->func;
+	container = p->func_top ? p->func_stack[p->func_top - 1].func : NULL;
+	if (!container && vm->stack)
+		container = vm->stack->func;
 
 	if (p->flags & SOPHON_PARSER_FL_STRICT)
 		flags |= SOPHON_FUNC_FL_STRICT;
-	if (container->flags & SOPHON_FUNC_FL_STRICT)
+	if (container && (container->flags & SOPHON_FUNC_FL_STRICT))
 		flags |= SOPHON_FUNC_FL_STRICT;
 
 	func_id = sophon_module_add_func(vm, p->module, name, flags);
 	SOPHON_ASSERT(func_id >= 0);
 
 	func = sophon_module_get_func(p->module, func_id);
+	if (p->func_top >= SOPHON_PARSER_FUNC_STACK_SIZE)
+		sophon_fatal("function nesting overflow");
 
-	func->container = container;
+	stk = &p->func_stack[p->func_top++];
 
-	p->func = func;
+	stk->func = func;
+	stk->frame_bottom = p->frame_top;
+
+	parser_push_frame(vm);
 }
 
 #include "sophon_parser_gen_code.c"
 
 /*Popup a function from the stack and generate byte code*/
 static Sophon_Result
-parser_pop_func (Sophon_VM *vm, Sophon_ParserOp **ops)
+parser_pop_func (Sophon_VM *vm, Sophon_ParserOp **cmd_ops)
 {
 	Sophon_ParserData *p = (Sophon_ParserData*)vm->parser_data;
-	Sophon_Function *func;
+	Sophon_ParserOp *ops = NULL;
+	Sophon_ParserFunc *func;
+	Sophon_ParserFrame *frame;
 	Sophon_Result r = SOPHON_OK;
 
-	func = p->func;
-	SOPHON_ASSERT(func);
+	SOPHON_ASSERT(p->func_top > 0 && p->frame_top > 0);
 
-	r = parser_gen_code(vm, func, ops);
+	func  = FUNC(0);
+	frame = FRAME(0);
 
-	parser_free_ops(vm, *ops);
-	*ops = NULL;
-	
-	p->func = func->container;
+	SOPHON_ASSERT(func->frame_bottom == p->frame_top - 1);
+
+	parser_merge_ops(&ops, &frame->ops);
+	parser_merge_ops(&ops, cmd_ops);
+
+	r = parser_gen_code(vm, func->func, &ops);
+
+	parser_free_ops(vm, ops);
+
+	parser_pop_frame(vm);
+	p->func_top--;
 	return r;
 }
 
@@ -826,10 +873,10 @@ parser_add_var (Sophon_VM *vm, Sophon_Location *loc, Sophon_String *name)
 	char *cstr;
 	Sophon_U32 len;
 
-	func = p->func;
+	func = FUNC(0)->func;
 
-	if ((p->func->flags & SOPHON_FUNC_FL_EVAL) &&
-				!(p->func->flags & SOPHON_FUNC_FL_STRICT)) {
+	if ((func->flags & SOPHON_FUNC_FL_EVAL) &&
+				!(func->flags & SOPHON_FUNC_FL_STRICT)) {
 		Sophon_DeclFrame *frame;
 
 		frame = (Sophon_DeclFrame*)vm->stack->var_env;
@@ -1555,7 +1602,8 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 				ent->value = (Sophon_Ptr)PROP_DEFINE_DATA;
 			} else if (r == SOPHON_NONE) {
 				Sophon_UIntPtr old = (Sophon_UIntPtr)ent->value;
-				Sophon_Bool strict = p->func->flags & SOPHON_FUNC_FL_STRICT;
+				Sophon_Bool strict = FUNC(0)->func->flags &
+						SOPHON_FUNC_FL_STRICT;
 				Sophon_Bool ok = SOPHON_TRUE;
 
 				if (old & (PROP_DEFINE_SET|PROP_DEFINE_GET)) {
@@ -1590,7 +1638,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 		}
 		case R_PROP_GET: {
 			Sophon_Int pid;
-			Sophon_Function *func = p->func;
+			Sophon_Function *func = FUNC(0)->func;
 			Sophon_ParserObject *obj = p->obj_stack;
 			Sophon_HashEntry *ent;
 
@@ -1634,7 +1682,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 
 			parser_push_func(vm, NULL);
 
-			func = p->func;
+			func = FUNC(0)->func;
 			str = (Sophon_String*)SOPHON_VALUE_GET_GC(V(3).v);
 			sophon_function_add_var(vm, func, SOPHON_FUNC_ARG, str);
 			p->flags |= SOPHON_PARSER_FL_FUNC_BEGIN;
@@ -1642,7 +1690,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 		}
 		case R_PROP_SET: {
 			Sophon_Int pid;
-			Sophon_Function *func = p->func;
+			Sophon_Function *func = FUNC(0)->func;
 			Sophon_ParserObject *obj = p->obj_stack;
 			Sophon_HashEntry *ent;
 
@@ -1727,7 +1775,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 			break;
 		}
 		case R_RETURN: {
-			if (p->func->flags & SOPHON_FUNC_FL_EVAL) {
+			if (FUNC(0)->func->flags & SOPHON_FUNC_FL_EVAL) {
 				parser_error(vm, PARSER_ERROR, &L(0),
 						"\"return\" is not in a function");
 				return SOPHON_ERR_PARSE;
@@ -1739,7 +1787,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 			break;
 		}
 		case R_RETURN_VALUE: {
-			if (p->func->flags & SOPHON_FUNC_FL_EVAL) {
+			if (FUNC(0)->func->flags & SOPHON_FUNC_FL_EVAL) {
 				parser_error(vm, PARSER_ERROR, &L(0),
 						"\"return\" is not in a function");
 				return SOPHON_ERR_PARSE;
@@ -1753,7 +1801,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 		case R_VAR_INIT:
 		case R_VAR: {
 			Sophon_String *name = GET_STRING(V(0).v);
-			Sophon_Bool strict = p->func->flags & SOPHON_FUNC_FL_STRICT;
+			Sophon_Bool strict = FUNC(0)->func->flags & SOPHON_FUNC_FL_STRICT;
 			Sophon_Int id;
 
 			if (strict &&
@@ -1917,14 +1965,22 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 						OP_expr, &V(1).expr, OP_throw, -1);
 			break;
 		}
+		case R_FRAME_BEGIN: {
+			parser_push_frame(vm);
+			break;
+		}
 		case R_CATCH: {
 			Sophon_Int id;
+			Sophon_ParserFrame *frame = FRAME(0);
 
 			v->ops = NULL;
 			id = ADD_CONST(V(2).v);
 			APPEND(vm, &v->ops, L(4).first_line,
-						OP_catch, id, OP_merge, &V(4).ops,
+						OP_catch, id, OP_merge, &frame->ops,
+						OP_merge, &V(5).ops,
 						OP_pop_frame, -1);
+
+			parser_pop_frame(vm);
 			break;
 		}
 		case R_TRY_CATCH: {
@@ -1940,7 +1996,9 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 			break;
 		}
 		case R_WITH: {
-			if (p->func->flags & SOPHON_FUNC_FL_STRICT) {
+			Sophon_ParserFrame *frame = FRAME(0);
+
+			if (FUNC(0)->func->flags & SOPHON_FUNC_FL_STRICT) {
 				parser_error(vm, PARSER_ERROR, &L(0),
 							"\"with\" cannot be used in strict mode");
 				return SOPHON_ERR_PARSE;
@@ -1949,8 +2007,11 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 			v->ops = NULL;
 			APPEND(vm, &v->ops, L(0).first_line,
 						OP_expr, &V(2).expr, OP_with,
-						OP_merge, &V(4).ops,
+						OP_merge, &frame->ops,
+						OP_merge, &V(5).ops,
 						OP_pop_frame, -1);
+
+			parser_pop_frame(vm);
 			break;
 		}
 		case R_CASE_CLAUSE: {
@@ -2077,10 +2138,10 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 		}
 		case R_PARAM_2:
 		case R_PARAM: {
-			Sophon_Function *func = p->func;
+			Sophon_Function *func = FUNC(0)->func;
 			Sophon_String *name;
 			Sophon_Int r;
-			Sophon_Bool strict = p->func->flags & SOPHON_FUNC_FL_STRICT;
+			Sophon_Bool strict = func->flags & SOPHON_FUNC_FL_STRICT;
 			char *buf;
 			Sophon_U32 len;
 
@@ -2119,7 +2180,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 			break;
 		}
 		case R_FUNC_BEGIN: {
-			Sophon_Bool strict = p->func->flags & SOPHON_FUNC_FL_STRICT;
+			Sophon_Bool strict = FUNC(0)->func->flags & SOPHON_FUNC_FL_STRICT;
 			Sophon_String *name = GET_STRING(V(1).v);
 
 			if (strict &&
@@ -2144,20 +2205,25 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 			break;
 		}
 		case R_FUNC_DECL: {
-			Sophon_Function *func = p->func;
+			Sophon_ParserFunc *func;
+			Sophon_ParserFrame *frame;
 			Sophon_Int id;
 
-			id = ADD_CONST(SOPHON_VALUE_GC(func->name));
+			func  = FUNC(0);
+			frame = FRAME(1);
+
+			id = ADD_CONST(SOPHON_VALUE_GC(func->func->name));
 			v->ops = NULL;
-			APPEND(vm, &v->ops, L(0).first_line, OP_closure, func->id,
-						OP_put_bind, id, OP_pop, 1, -1);
+
+			APPEND(vm, &frame->ops, L(0).first_line, OP_closure,
+						func->func->id, OP_put_bind, id, OP_pop, 1, -1);
 			r = parser_pop_func(vm, &V(8).ops);
 			if (r != SOPHON_OK)
 				return r;
 			break;
 		}
 		case R_FUNC_EXPR: {
-			Sophon_Function *func = p->func;
+			Sophon_Function *func = FUNC(0)->func;
 
 			EXPR_INIT(&v->expr);
 			APPEND(vm, &v->expr.base_ops, L(0).first_line,
@@ -2303,6 +2369,7 @@ parse (Sophon_VM *vm)
 	Sophon_U16 sym;
 	Sophon_U16 edge;
 	Sophon_U16 eps;
+	Sophon_U16 identifier;
 	Sophon_U32 reduce;
 	Sophon_Result r;
 	Sophon_Bool error = SOPHON_FALSE;
@@ -2374,12 +2441,12 @@ next_state:
 
 	/*Strict mode flag check*/
 	if (p->flags & SOPHON_PARSER_FL_FUNC_BEGIN) {
-		if (!(p->func->flags & SOPHON_FUNC_FL_STRICT)) {
+		if (!(FUNC(0)->func->flags & SOPHON_FUNC_FL_STRICT)) {
 			if (curr->t == T_STRING) {
 				Sophon_String *str = GET_STRING(curr->v.v);
 
 				if (!sophon_string_cmp(vm, str, vm->use_strict_str)) {
-					p->func->flags |= SOPHON_FUNC_FL_STRICT;
+					FUNC(0)->func->flags |= SOPHON_FUNC_FL_STRICT;
 				}
 			}
 		}
@@ -2389,6 +2456,7 @@ next_state:
 	/*State change*/
 	edge = js_state_shifts[top->s];
 	eps  = 0xFFFF;
+	identifier = 0xFFFF;
 
 	while (edge != 0xFFFF) {
 		sym = js_edge_symbol[edge];
@@ -2405,6 +2473,8 @@ next_state:
 			goto next_state;
 		} else if (sym == T_EPSILON) {
 			eps = js_edge_dest[edge];
+		} else if (sym == T_IDENTIFIER) {
+			identifier = js_edge_dest[edge];
 		} else if ((sym == T_REGEXP) &&
 				((curr->t == '/') || (curr->t == T_DIV_ASSIGN))) {
 			Sophon_Token t;
@@ -2419,10 +2489,29 @@ next_state:
 		edge = js_edge_next[edge];
 	}
 
+	if ((identifier != 0xFFFF) && ((curr->t == T_get) ||
+					(curr->t == T_set))) {
+		PUSH();
+
+		if (curr->t == T_get)
+			sophon_value_set_string(vm, &curr->v.v, vm->get_str);
+		else
+			sophon_value_set_string(vm, &curr->v.v, vm->set_str);
+
+		curr->t = T_IDENTIFIER;
+		curr->s = identifier;
+		*top = *curr;
+
+		curr->t = 0xFFFF;
+
+		DEBUG(("shift to state %d", curr->s));
+		goto next_state;
+	}
+
 	if (eps != 0xFFFF) {
 		PUSH();
 
-		curr->s = js_edge_dest[eps];
+		curr->s = eps;
 		*top = *curr;
 
 		DEBUG(("shift epsilon to state %d", curr->s));
@@ -2581,6 +2670,10 @@ accept:
 		parser_pop_obj(vm);
 	}
 
+	while (p->frame_top) {
+		parser_pop_frame(vm);
+	}
+
 	return error ? (fatal ? tok : SOPHON_ERR_PARSE) : SOPHON_OK;
 }
 
@@ -2634,7 +2727,11 @@ sophon_parse (Sophon_VM *vm, Sophon_Module *mod, Sophon_Encoding enc,
 	}
 
 	func = sophon_module_get_func(mod, func_id);
-	p->func = func;
+
+	p->func_stack[0].func = func;
+	p->func_stack[0].frame_bottom = 0;
+	p->func_top  = 1;
+	p->frame_top = 0;
 
 	/*Add a new closure*/
 	clos = sophon_closure_create(vm, func);
@@ -2642,6 +2739,8 @@ sophon_parse (Sophon_VM *vm, Sophon_Module *mod, Sophon_Encoding enc,
 	sophon_value_set_gc(vm, &mod->globv, (Sophon_GCObject*)clos);
 
 	vm->parser_data = p;
+
+	parser_push_frame(vm);
 
 	/*Parse*/
 	r = parse(vm);

@@ -122,7 +122,6 @@ sophon_module_add_func (Sophon_VM *vm, Sophon_Module *mod,
 	func = (Sophon_Function*)sophon_mm_alloc_ensure(vm,
 				sizeof(Sophon_Function));
 
-	func->container = NULL;
 	func->module = mod;
 	func->name   = name;
 	func->flags  = flags;

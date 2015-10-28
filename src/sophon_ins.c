@@ -523,7 +523,7 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 #define I_catch_run\
 	Sophon_Value namev = CONST(id);\
 	Sophon_String *name = (Sophon_String*)SOPHON_VALUE_GET_GC(namev);\
-	sophon_stack_push_catch(vm, name, vm->excepv);\
+	sophon_stack_push_name(vm, name, vm->excepv);\
 	sophon_value_set_undefined(vm, &vm->excepv);
 #define I_pop_frame_run\
 	sophon_stack_pop_frame(vm)

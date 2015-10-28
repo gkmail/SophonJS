@@ -162,8 +162,8 @@ sophon_stack_push_decl (Sophon_VM *vm, Sophon_Value thisv,
 }
 
 Sophon_Result
-sophon_stack_push_catch (Sophon_VM *vm, Sophon_String *name,
-			Sophon_Value excepv)
+sophon_stack_push_name (Sophon_VM *vm, Sophon_String *name,
+			Sophon_Value v)
 {
 	Sophon_Frame *frame;
 	Sophon_Stack *top;
@@ -173,7 +173,7 @@ sophon_stack_push_catch (Sophon_VM *vm, Sophon_String *name,
 	top = vm->stack;
 	SOPHON_ASSERT(top);
 
-	frame = (Sophon_Frame*)sophon_catch_frame_create(vm, name, excepv);
+	frame = (Sophon_Frame*)sophon_name_frame_create(vm, name, v);
 	frame->bottom = top->lex_env;
 	top->lex_env = frame;
 
@@ -306,10 +306,10 @@ sophon_stack_delete_binding (Sophon_VM *vm, Sophon_String *name)
 				}
 				break;
 			}
-			case SOPHON_GC_CatchFrame: {
-				Sophon_CatchFrame *cf = (Sophon_CatchFrame*)frame;
+			case SOPHON_GC_NameFrame: {
+				Sophon_NameFrame *nf = (Sophon_NameFrame*)frame;
 
-				if (cf->name == name)
+				if (nf->name == name)
 					return SOPHON_ERR_ACCESS;
 				break;
 			}
@@ -411,11 +411,11 @@ sophon_stack_get_binding (Sophon_VM *vm, Sophon_String *name,
 				}
 				break;
 			}
-			case SOPHON_GC_CatchFrame: {
-				Sophon_CatchFrame *cf = (Sophon_CatchFrame*)frame;
+			case SOPHON_GC_NameFrame: {
+				Sophon_NameFrame *nf = (Sophon_NameFrame*)frame;
 
-				if (cf->name == name) {
-					*getv = cf->excepv;
+				if (nf->name == name) {
+					*getv = nf->v;
 					return SOPHON_OK;
 				}
 				break;
@@ -521,11 +521,11 @@ sophon_stack_put_binding (Sophon_VM *vm, Sophon_String *name,
 				}
 				break;
 			}
-			case SOPHON_GC_CatchFrame: {
-				Sophon_CatchFrame *cf = (Sophon_CatchFrame*)frame;
+			case SOPHON_GC_NameFrame: {
+				Sophon_NameFrame *nf = (Sophon_NameFrame*)frame;
 
-				if (cf->name == name) {
-					cf->excepv = setv;
+				if (nf->name == name) {
+					nf->v = setv;
 					return SOPHON_OK;
 				}
 				break;

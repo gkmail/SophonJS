@@ -90,16 +90,16 @@ extern Sophon_Result sophon_stack_push_decl (Sophon_VM *vm,
 						Sophon_U8 argc);
 
 /**
- * \brief Push a catch frame into the stack
+ * \brief Push a named value frame into the stack
  * \param[in] vm The current virtual machine
- * \param name The name of the exception binding
- * \param excepv The exception value
+ * \param name The name of the value
+ * \param v The value
  * \retval SOPHON_OK On success
  * \retval <0 On error
  */
-extern Sophon_Result sophon_stack_push_catch (Sophon_VM *vm,
+extern Sophon_Result sophon_stack_push_name (Sophon_VM *vm,
 						Sophon_String *name,
-						Sophon_Value excepv);
+						Sophon_Value v);
 
 /**
  * \brief Push a with frame into the stack

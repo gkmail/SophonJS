@@ -69,13 +69,13 @@ gc_scan_decl_frame (Sophon_VM *vm, Sophon_DeclFrame *frame)
 #define gc_scan_global_frame gc_scan_decl_frame
 
 static void
-gc_scan_catch_frame (Sophon_VM *vm, Sophon_CatchFrame *frame)
+gc_scan_name_frame (Sophon_VM *vm, Sophon_NameFrame *frame)
 {
 	if (frame->frame.bottom)
 		gc_mark(vm, (Sophon_GCObject*)(frame->frame.bottom));
 
 	gc_mark(vm, (Sophon_GCObject*)frame->name);
-	sophon_value_mark(vm, frame->excepv);
+	sophon_value_mark(vm, frame->v);
 }
 
 static void

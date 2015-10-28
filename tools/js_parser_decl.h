@@ -164,6 +164,7 @@ extern "C" {
 	r(OBJECT_BEGIN)\
 	r(VAR_STATEMENT)\
 	r(DEBUGGER)\
+	r(FRAME_BEGIN)\
 	r(ACCEPT)
 
 #ifdef __cplusplus

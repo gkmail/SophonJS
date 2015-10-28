@@ -36,10 +36,7 @@
 	#define SOPHON_BLOCK_STACK_SIZE 64
 #endif
 
-#ifndef SOPHON_FRAME_STACK_SIZE
-	#define SOPHON_FRAME_STACK_SIZE 64
-#endif
-
+#define SOPHON_FRAME_STACK_SIZE SOPHON_PARSER_FRAME_STACK_SIZE
 
 typedef struct {
 	Sophon_ParserLabel *label;

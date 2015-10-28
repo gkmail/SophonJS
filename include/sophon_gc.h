@@ -45,7 +45,7 @@ extern "C" {
 #define SOPHON_GC_Array         3
 #define SOPHON_GC_GlobalFrame   4
 #define SOPHON_GC_DeclFrame     5
-#define SOPHON_GC_CatchFrame    6
+#define SOPHON_GC_NameFrame     6
 #define SOPHON_GC_WithFrame     7
 #define SOPHON_GC_Module        8
 #define SOPHON_GC_RegExp        9

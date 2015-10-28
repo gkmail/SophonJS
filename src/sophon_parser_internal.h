@@ -170,6 +170,8 @@ FOR_EACH_OP_MODEL(DECL_OP_MODEL_STRUCT)
 typedef struct Sophon_ParserExpr_s   Sophon_ParserExpr;
 typedef struct Sophon_ParserCase_s   Sophon_ParserCase;
 typedef struct Sophon_ParserObject_s Sophon_ParserObject;
+typedef struct Sophon_ParserFunc_s   Sophon_ParserFunc;
+typedef struct Sophon_ParserFrame_s  Sophon_ParserFrame;
 
 struct Sophon_ParserCase_s {
 	Sophon_ParserCase  *prev;
@@ -263,6 +265,15 @@ struct Sophon_ParserObject_s {
 	Sophon_Hash          prop_hash;
 };
 
+struct Sophon_ParserFunc_s {
+	Sophon_Function     *func;
+	Sophon_U32           frame_bottom;
+};
+
+struct Sophon_ParserFrame_s {
+	Sophon_ParserOp     *ops;
+};
+
 union Sophon_TokenValue_u {
 	Sophon_Value   v;
 	struct {
@@ -298,6 +309,13 @@ typedef struct {
 	#define SOPHON_PARSER_OBJECT_STACK_SIZE 64
 #endif
 
+#ifndef SOPHON_PARSER_FUNC_STACK_SIZE
+	#define SOPHON_PARSER_FUNC_STACK_SIZE 64
+#endif
+
+#ifndef SOPHON_PARSER_FRAME_STACK_SIZE
+	#define SOPHON_PARSER_FRAME_STACK_SIZE 64
+#endif
 
 typedef struct {
 	Sophon_ParserStack  stack[SOPHON_PARSER_STACK_SIZE];
@@ -308,9 +326,12 @@ typedef struct {
 	Sophon_U32          flags;
 	Sophon_U32          gc_level;
 	Sophon_Module      *module;
-	Sophon_Function    *func;
 	Sophon_ParserObject obj_stack[SOPHON_PARSER_OBJECT_STACK_SIZE];
+	Sophon_ParserFunc   func_stack[SOPHON_PARSER_FUNC_STACK_SIZE];
+	Sophon_ParserFrame  frame_stack[SOPHON_PARSER_FRAME_STACK_SIZE];
 	Sophon_U32          obj_top;
+	Sophon_U32          func_top;
+	Sophon_U32          frame_top;
 } Sophon_ParserData;
 
 extern Sophon_ParserOpModel   sophon_parser_op_get_model (

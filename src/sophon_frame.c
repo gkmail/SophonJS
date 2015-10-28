@@ -127,31 +127,31 @@ sophon_decl_frame_destroy (Sophon_VM *vm, Sophon_DeclFrame *frame)
 	sophon_mm_free(vm, frame, size);
 }
 
-Sophon_CatchFrame*
-sophon_catch_frame_create (Sophon_VM *vm, Sophon_String *name,
-			Sophon_Value excepv)
+Sophon_NameFrame*
+sophon_name_frame_create (Sophon_VM *vm, Sophon_String *name,
+			Sophon_Value v)
 {
-	Sophon_CatchFrame *frame;
+	Sophon_NameFrame *frame;
 
 	SOPHON_ASSERT(vm);
 
-	frame = (Sophon_CatchFrame*)sophon_mm_alloc_ensure(vm,
-				sizeof(Sophon_CatchFrame));
+	frame = (Sophon_NameFrame*)sophon_mm_alloc_ensure(vm,
+				sizeof(Sophon_NameFrame));
 
-	SOPHON_GC_HEADER_INIT((Sophon_GCObject*)frame, SOPHON_GC_CatchFrame);
+	SOPHON_GC_HEADER_INIT((Sophon_GCObject*)frame, SOPHON_GC_NameFrame);
 
-	frame->name   = name;
-	frame->excepv = excepv;
+	frame->name = name;
+	frame->v    = v;
 
 	return frame;
 }
 
 void
-sophon_catch_frame_destroy (Sophon_VM *vm, Sophon_CatchFrame *frame)
+sophon_name_frame_destroy (Sophon_VM *vm, Sophon_NameFrame *frame)
 {
 	SOPHON_ASSERT(vm && frame);
 
-	sophon_mm_free(vm, frame, sizeof(Sophon_CatchFrame));
+	sophon_mm_free(vm, frame, sizeof(Sophon_NameFrame));
 }
 
 Sophon_WithFrame*
@@ -191,8 +191,8 @@ sophon_frame_destroy (Sophon_VM *vm, Sophon_Frame *frame)
 		case SOPHON_GC_DeclFrame:
 			sophon_decl_frame_destroy(vm, (Sophon_DeclFrame*)frame);
 			break;
-		case SOPHON_GC_CatchFrame:
-			sophon_catch_frame_destroy(vm, (Sophon_CatchFrame*)frame);
+		case SOPHON_GC_NameFrame:
+			sophon_name_frame_destroy(vm, (Sophon_NameFrame*)frame);
 			break;
 		case SOPHON_GC_WithFrame:
 			sophon_with_frame_destroy(vm, (Sophon_WithFrame*)frame);

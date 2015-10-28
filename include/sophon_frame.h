@@ -45,7 +45,7 @@ extern "C" {
 typedef enum {
 	SOPHON_FRAME_GLOBAL, /**< Global frame*/
 	SOPHON_FRAME_DECL,   /**< Declaration frame*/
-	SOPHON_FRAME_CATCH,  /**< Catch block*/
+	SOPHON_FRAME_NAME,   /**< A named value block*/
 	SOPHON_FRAME_WITH    /**< With block*/
 } Sophon_FrameType;
 
@@ -73,12 +73,12 @@ typedef struct {
 /**\brief Global frame*/
 typedef Sophon_DeclFrame Sophon_GlobalFrame;
 
-/**\brief Catch frame*/
+/**\brief Named value frame*/
 typedef struct {
 	Sophon_Frame     frame;    /**< Base frame data*/
-	Sophon_String   *name;     /**< Name of the exception*/
-	Sophon_Value     excepv;   /**< Exception value*/
-} Sophon_CatchFrame;
+	Sophon_String   *name;     /**< Name of the value*/
+	Sophon_Value     v;        /**< Value*/
+} Sophon_NameFrame;
 
 /**\brief With frame*/
 typedef struct {
@@ -125,23 +125,23 @@ extern void                sophon_decl_frame_destroy (Sophon_VM *vm,
 #define sophon_global_frame_destroy sophon_decl_frame_destroy
 
 /**
- * \brief Create a new catch frame
+ * \brief Create a new named value frame
  * \param[in] vm The current virtual machine
- * \param name The name of the exception binding
- * \param excepv The catched exception value
- * \return The new catch frame
+ * \param name The name of the value
+ * \param v The value
+ * \return The new named value frame
  */
-extern Sophon_CatchFrame*  sophon_catch_frame_create (Sophon_VM *vm,
+extern Sophon_NameFrame*   sophon_name_frame_create (Sophon_VM *vm,
 							Sophon_String *name,
-							Sophon_Value excepv);
+							Sophon_Value v);
 
 /**
- * \brief Release an unused catch frame
+ * \brief Release an unused named value frame
  * \param[in] vm The current virtual machine
  * \param[in] frame The frame to be freed
  */
-extern void                sophon_catch_frame_destroy (Sophon_VM *vm,
-							Sophon_CatchFrame *frame);
+extern void                sophon_name_frame_destroy (Sophon_VM *vm,
+							Sophon_NameFrame *frame);
 
 /**
  * \brief Create a new with frame

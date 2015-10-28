@@ -57,7 +57,7 @@ add_rule(N_STATEMENT, N_IF_STATEMENT, R_COPY_0);
 add_rule(N_STATEMENT, T_do, N_STATEMENT, T_while, '(', N_EXPR, ')', ';', R_DO_STATEMENT);
 add_rule(N_STATEMENT, T_while, '(', N_EXPR, ')', N_STATEMENT, R_WHILE_STATEMENT);
 add_rule(N_STATEMENT, N_FOR_STATEMENT, R_COPY_0);
-add_rule(N_STATEMENT, T_with, '(', N_EXPR, ')', N_STATEMENT, R_WITH);
+add_rule(N_STATEMENT, T_with, '(', N_EXPR, ')', R_FRAME_BEGIN, N_STATEMENT, R_WITH);
 add_rule(N_STATEMENT, T_switch, '(', N_EXPR, ')', N_CASE_BLOCK, R_SWITCH);
 add_rule(N_STATEMENT, T_IDENTIFIER, ':', N_STATEMENT, R_LABEL);
 add_rule(N_STATEMENT, T_throw, N_EXPR, ';', R_THROW);
@@ -107,7 +107,7 @@ add_rule(N_TRY_STATEMENT, T_try, N_BLOCK, N_CATCH, R_TRY_CATCH);
 add_rule(N_TRY_STATEMENT, T_try, N_BLOCK, N_FINALLY, R_TRY_FINALLY);
 add_rule(N_TRY_STATEMENT, T_try, N_BLOCK, N_CATCH, N_FINALLY, R_TRY_CATCH_FINALLY);
 
-add_rule(N_CATCH, T_catch, '(', T_IDENTIFIER, ')', N_BLOCK, R_CATCH);
+add_rule(N_CATCH, T_catch, '(', T_IDENTIFIER, ')', R_FRAME_BEGIN, N_BLOCK, R_CATCH);
 
 add_rule(N_FINALLY, T_finally, N_BLOCK, R_COPY_1);
 

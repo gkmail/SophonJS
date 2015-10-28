@@ -54,21 +54,21 @@ call_test();
 
 function arguments_test()
 {
-	function test(x,y)
+	function test1(x,y)
 	{
 		return arguments.length;
 	}
 
-	if (test() != 0)
+	if (test1() != 0)
 		fail();
-	if (test(1) != 1)
+	if (test1(1) != 1)
 		fail();
-	if (test(1,2) != 2)
+	if (test1(1,2) != 2)
 		fail();
-	if (test(1,2,3,4,5) != 5)
+	if (test1(1,2,3,4,5) != 5)
 		fail();
 
-	function test(x,y,z)
+	function test2(x,y,z)
 	{
 		arguments[0] = "new0";
 		arguments[1] = "new1";
@@ -82,30 +82,30 @@ function arguments_test()
 			fail();
 	}
 
-	test(0,1,2);
-	test(0);
+	test2(0,1,2);
+	test2(0);
 
-	function test(x,y,z)
+	function test3(x,y,z)
 	{
 		if (arguments.callee.length != 3)
 			fail();
 	}
 
-	test();
+	test3();
 
-	function test(x,y)
+	function test4(x,y)
 	{
 		if (arguments.caller.length !=3)
 			fail();
 		if (arguments.caller.arguments.length != 5)
 			fail();
 	}
-	function test2(x,y,z)
+	function test5(x,y,z)
 	{
-		test(x,y);
+		test4(x,y);
 	}
 
-	test2(1,2,3,4,5);
+	test5(1,2,3,4,5);
 
 	console.log("arguments test passed");
 }

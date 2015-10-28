@@ -107,8 +107,8 @@ gc_final (Sophon_VM *vm, Sophon_GCObject *obj)
 		case SOPHON_GC_DeclFrame:
 			sophon_decl_frame_destroy(vm, (Sophon_DeclFrame*)obj);
 			break;
-		case SOPHON_GC_CatchFrame:
-			sophon_catch_frame_destroy(vm, (Sophon_CatchFrame*)obj);
+		case SOPHON_GC_NameFrame:
+			sophon_name_frame_destroy(vm, (Sophon_NameFrame*)obj);
 			break;
 		case SOPHON_GC_WithFrame:
 			sophon_with_frame_destroy(vm, (Sophon_WithFrame*)obj);
@@ -169,8 +169,8 @@ gc_scan (Sophon_VM *vm, Sophon_GCObject *obj)
 		case SOPHON_GC_DeclFrame:
 			gc_scan_decl_frame(vm, (Sophon_DeclFrame*)obj);
 			break;
-		case SOPHON_GC_CatchFrame:
-			gc_scan_catch_frame(vm, (Sophon_CatchFrame*)obj);
+		case SOPHON_GC_NameFrame:
+			gc_scan_name_frame(vm, (Sophon_NameFrame*)obj);
 			break;
 		case SOPHON_GC_WithFrame:
 			gc_scan_with_frame(vm, (Sophon_WithFrame*)obj);

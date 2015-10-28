@@ -5,7 +5,7 @@ function fail()
 
 function constructor_test()
 {
-	function test(o, str)
+	var test=function(o, str)
 	{
 		if (o != str)
 			fail();
@@ -23,7 +23,7 @@ function constructor_test()
 	test(String(null),"null");
 	test(String(undefined),"undefined");
 
-	function test(o, str)
+	var test=function(o, str)
 	{
 		if (o != str)
 			fail();
