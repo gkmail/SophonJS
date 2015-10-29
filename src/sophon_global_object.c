@@ -67,7 +67,8 @@ str_input (Sophon_Ptr data, Sophon_U8 *buf, Sophon_Int size)
 	if (p->len <= 0)
 		return 0;
 
-	cnt = SOPHON_MIN(p->len, size);
+	cnt = SOPHON_MIN(p->len, size / sizeof(Sophon_Char));
+
 	sophon_memcpy(buf, p->chars + p->off, cnt * sizeof(Sophon_Char));
 
 	p->len -= cnt;
