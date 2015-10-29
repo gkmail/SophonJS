@@ -198,6 +198,15 @@ examples: $(OUT)/integrate$(EXE_SUFFIX) $(OUT)/extend$(EXE_SUFFIX) $(OUT)/shell$
 
 .PHONY: examples
 
+TARGET:=test262
+SRCS:=tests/test262.c
+SLIBS:=libsophonjs
+AUTO_BUILD:=0
+include build/exe.mk
+
+test262: $(OUT)/test262$(EXE_SUFFIX)
+.PHONY: test262
+
 INSTALL_HEADERS:=$(wildcard include/*.h)
 INSTALL_HEADERS_PREFIX:=sophon
 include build/install.mk

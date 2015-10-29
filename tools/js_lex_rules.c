@@ -49,6 +49,7 @@ add_rule(C_COMMENT_BLOCK, "\\r\\n", A_COMMENT_LINE_TERM);
 add_rule(C_COMMENT_BLOCK, "[\\r\\n\\u2028\\u2029]", A_COMMENT_LINE_TERM);
 add_rule(C_COMMENT_BLOCK, ".", A_NONE);
 
-add_rule(C_COMMENT_LINE, "\\n", A_COMMENT_LINE_END);
+add_rule(C_COMMENT_LINE, "\\r\\n", A_COMMENT_LINE_END);
+add_rule(C_COMMENT_LINE, "[\\r\\n\\u2028\\u2029]", A_COMMENT_LINE_END);
 add_rule(C_COMMENT_LINE, ".", A_NONE);
 

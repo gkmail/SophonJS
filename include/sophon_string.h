@@ -254,6 +254,20 @@ extern Sophon_String* sophon_string_escape (Sophon_VM *vm,
 extern Sophon_String* sophon_string_unescape (Sophon_VM *vm,
 						Sophon_String *str);
 
+/**
+ * \brief Get the character item in the string
+ * \param[in] vm The current virtual machine
+ * \param[in] str The input string
+ * \param id The item's index
+ * \param[out] retv The return value
+ * \retval SOPHON_OK On success
+ * \retval <0 On error
+ */
+extern Sophon_Result  sophon_string_get_item (Sophon_VM *vm,
+						Sophon_String *str,
+						Sophon_U32 id,
+						Sophon_Value *retv);
+
 #ifdef __cplusplus
 }
 #endif

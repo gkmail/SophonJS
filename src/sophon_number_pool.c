@@ -88,6 +88,9 @@ np_sweep (Sophon_VM *vm, Sophon_NumberPool *pool)
 						pool->free_list = ent;
 						pool->free_count++;
 
+						SOPHON_ASSERT(pool->free_count <=
+									SOPHON_NUMBER_ENTRY_COUNT);
+
 						*used &= ~(1 << b);
 					}
 				}
@@ -133,7 +136,7 @@ np_alloc (Sophon_VM *vm)
 	pool->used_flags = (Sophon_U32*)(pool + 1);
 	pool->mark_flags = pool->used_flags + (SOPHON_NUMBER_ENTRY_COUNT / 32);
 
-	sophon_memset(pool->mark_flags, 0, SOPHON_NUMBER_ENTRY_COUNT / 4);
+	sophon_memset(pool->used_flags, 0, SOPHON_NUMBER_ENTRY_COUNT / 4);
 
 	pool->entries    = (Sophon_Number*)
 			(pool->mark_flags + (SOPHON_NUMBER_ENTRY_COUNT / 32));
@@ -293,6 +296,7 @@ sophon_value_set_number_real (Sophon_VM *vm, Sophon_Value *v, Sophon_Number d)
 
 	/*Allocate a new double*/
 	ent = pool->free_list;
+
 	pool->free_list = ent->next;
 	pool->free_count--;
 
@@ -312,6 +316,8 @@ sophon_value_set_number_real (Sophon_VM *vm, Sophon_Value *v, Sophon_Number d)
 	sophon_gc_add_nb(vm, *v);
 
 	if (! pool->free_list){
+		SOPHON_ASSERT(!pool->free_count);
+
 		vm->np_free_list = pool->next;
 		pool->next = vm->np_full_list;
 		vm->np_full_list = pool;

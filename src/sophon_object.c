@@ -263,6 +263,16 @@ value_is_array (Sophon_VM *vm, Sophon_Value v, Sophon_Array **parr)
 }
 
 static Sophon_Bool
+value_is_string (Sophon_VM *vm, Sophon_Value v, Sophon_String **pstr)
+{
+	if (!sophon_value_is_string(v))
+		return SOPHON_FALSE;
+
+	sophon_value_to_string(vm, v, pstr);
+	return SOPHON_TRUE;
+}
+
+static Sophon_Bool
 name_is_index (Sophon_VM *vm, Sophon_Value namev, Sophon_U32 *pid)
 {
 	Sophon_U32 i;
@@ -286,13 +296,14 @@ name_is_index (Sophon_VM *vm, Sophon_Value namev, Sophon_U32 *pid)
 		Sophon_GCObject *gco = SOPHON_VALUE_GET_GC(namev);
 
 		if (gco->gc_type == SOPHON_GC_String) {
-			Sophon_String *str;
+			Sophon_String *str, *nstr;
 			Sophon_Char *chars, *end;
 			Sophon_U32 len;
 			Sophon_Number n;
 			Sophon_Result r;
 
-			if (SOPHON_VALUE_GET_STRING(namev) == vm->length_str)
+			nstr = SOPHON_VALUE_GET_STRING(namev);
+			if (!sophon_string_cmp(vm, nstr, vm->length_str))
 				return SOPHON_FALSE;
 
 			str   = SOPHON_VALUE_GET_STRING(namev);
@@ -576,6 +587,7 @@ sophon_value_get (Sophon_VM *vm, Sophon_Value thisv,
 	Sophon_String *name;
 	Sophon_Result r;
 	Sophon_Array *arr;
+	Sophon_String *str;
 	Sophon_U32 id;
 
 	SOPHON_ASSERT(vm && getv);
@@ -583,6 +595,11 @@ sophon_value_get (Sophon_VM *vm, Sophon_Value thisv,
 	/*Array item property*/
 	if (value_is_array(vm, thisv, &arr) && name_is_index(vm, namev, &id)) {
 		return sophon_array_get_item(vm, arr, id, getv);
+	}
+
+	/*String item*/
+	if (value_is_string(vm, thisv, &str) && name_is_index(vm, namev, &id)) {
+		return sophon_string_get_item(vm, str, id, getv);
 	}
 
 	/*Normal property*/

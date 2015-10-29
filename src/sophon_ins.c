@@ -47,6 +47,8 @@
 #include "sophon_parser_internal.h"
 #include "sophon_ins_internal.h"
 
+/*#define DUMP_INS*/
+
 static const char*
 ins_tags[] = {
 #define DECL_INS_NAME(name, model, stk) #name,
@@ -677,7 +679,7 @@ again:
 #define INS_POST_OP_Call    IP += 2;
 #define INS_POST_OP_Jump    IP += 3;
 #define INS_POST_OP_StackOp IP += 2;
-#ifdef SOPHON_DEBUG
+#if defined(SOPHON_DEBUG) && defined(DUMP_INS)
 	#define INS_DEBUG()\
 		SOPHON_MACRO_BEGIN\
 			sophon_pr("%03d:%05d: ", SP, IP);\

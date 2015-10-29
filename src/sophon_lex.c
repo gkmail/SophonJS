@@ -43,7 +43,7 @@
 #include "sophon_js_parser.h"
 #include "sophon_js_lex.c"
 
-#if 0
+#if 1
 #define DEBUG(a) SOPHON_INFO(a)
 #else
 #define DEBUG(a)
@@ -219,6 +219,18 @@ lex_unget (Sophon_VM *vm, Sophon_Int ch)
 	l->clen++;
 }
 
+/*Unget characters*/
+static void
+lex_unget_n (Sophon_VM *vm, Sophon_Int n)
+{
+	Sophon_LexData *l = (Sophon_LexData*)vm->lex_data;
+
+	SOPHON_ASSERT(l->tlen >= n);
+
+	while (n--)
+		lex_unget(vm, l->tbuf[l->tlen - 1]);
+}
+
 /*Get the text string*/
 static Sophon_Char*
 lex_text (Sophon_VM *vm)
@@ -264,8 +276,9 @@ lex_get_escape_uc (Sophon_VM *vm)
 		br_end = SOPHON_FALSE;
 	} else {
 		br = SOPHON_FALSE;
-		if ((v = lex_char_to_hex(c)) < 0)
+		if ((v = lex_char_to_hex(c)) < 0) {
 			return v;
+		}
 
 		code = (code << 4) | v;
 		bytes--;
@@ -457,6 +470,7 @@ lex_get_id_start (Sophon_VM *vm, Sophon_Char ch)
 	Sophon_LexData *l = (Sophon_LexData*)vm->lex_data;
 	Sophon_Int uc;
 
+retry:
 	switch (ch) {
 		case '_':
 		case '$':
@@ -468,12 +482,16 @@ lex_get_id_start (Sophon_VM *vm, Sophon_Char ch)
 			if (ch == 'u'){
 				Sophon_U32 len = l->tlen - 1;
 
-				if ((uc = lex_get_escape_uc(vm)) < 0)
-					return uc;
+				if ((uc = lex_get_escape_uc(vm)) < 0) {
+					lex_unget_n(vm, l->tlen - len);
+					return SOPHON_FALSE;
+				}
 
 				l->tlen = len;
 				l->tbuf[len - 1] = uc;
-				return SOPHON_TRUE;
+
+				ch = uc;
+				goto retry;
 			} else {
 				lex_unget(vm, ch);
 				return SOPHON_FALSE;
@@ -497,6 +515,7 @@ lex_get_id_cont (Sophon_VM *vm, Sophon_Char ch)
 	Sophon_LexData *l = (Sophon_LexData*)vm->lex_data;
 	Sophon_Int uc;
 
+retry:
 	switch (ch) {
 		case '_':
 		case '$':
@@ -512,12 +531,16 @@ lex_get_id_cont (Sophon_VM *vm, Sophon_Char ch)
 			if (ch == 'u'){
 				Sophon_U32 len = l->tlen - 1;
 
-				if ((uc = lex_get_escape_uc(vm)) < 0)
-					return uc;
+				if ((uc = lex_get_escape_uc(vm)) < 0) {
+					lex_unget_n(vm, l->tlen - len);
+					return SOPHON_FALSE;
+				}
 
 				l->tlen = len;
 				l->tbuf[len - 1] = uc;
-				return SOPHON_TRUE;
+
+				ch = uc;
+				goto retry;
 			} else {
 				lex_unget(vm, ch);
 				return SOPHON_FALSE;
@@ -546,7 +569,7 @@ lex_get_id (Sophon_VM *vm, Sophon_TokenValue *val, Sophon_Bool keyword)
 	if (keyword) {
 		ch = lex_getc(vm);
 		if (!lex_get_id_cont(vm, ch)) {
-			lex_unget(vm, ch);
+			lex_unget_n(vm, 1);
 			return 0;
 		}
 	}
@@ -563,7 +586,7 @@ lex_get_id (Sophon_VM *vm, Sophon_TokenValue *val, Sophon_Bool keyword)
 				break;
 
 			if (!lex_get_id_cont(vm, ch)) {
-				lex_unget(vm, ch);
+				lex_unget_n(vm, 1);
 				break;
 			}
 		}
@@ -718,14 +741,11 @@ lex_action (Sophon_VM *vm, Sophon_U16 action, Sophon_TokenValue *val)
 	return 0;
 }
 
-static Sophon_Result
-lex_get_escape_re (Sophon_VM *vm)
+static Sophon_Int
+lex_re_getc (Sophon_VM *vm)
 {
-	Sophon_Int c;
-
-	if ((c = lex_getc(vm)) < 0)
-		return c;
-
+	Sophon_Int c = lex_getc(vm);
+	
 	if ((c == '\n') || (c == '\r')
 #ifndef SOPHON_8BITS_CHAR
 				|| (c == 0x2028) || (c == 0x2029)
@@ -733,7 +753,7 @@ lex_get_escape_re (Sophon_VM *vm)
 				)
 		return SOPHON_ERR_LEX;
 
-	return SOPHON_OK;
+	return c;
 }
 
 static Sophon_Token
@@ -744,7 +764,7 @@ lex_get_re (Sophon_VM *vm, Sophon_TokenValue *val)
 	Sophon_String *str;
 
 	/*Get body*/
-	if ((c = lex_getc(vm)) < 0)
+	if ((c = lex_re_getc(vm)) < 0)
 		return c;
 
 	if (l->tlen == 1) {
@@ -755,18 +775,18 @@ lex_get_re (Sophon_VM *vm, Sophon_TokenValue *val)
 	while (1) {
 		if (c == '[') {
 			while (1) {
-				if ((c = lex_getc(vm)) < 0)
+				if ((c = lex_re_getc(vm)) < 0)
 					return c;
 
 				if (c == ']') {
 					break;
 				} else if (c == '\\') {
-					if ((c = lex_get_escape_re(vm)) < 0)
+					if ((c = lex_re_getc(vm)) < 0)
 						return c;
 				}
 			}
 		} else if (c == '\\') {
-			if ((c = lex_get_escape_re(vm)) < 0)
+			if ((c = lex_re_getc(vm)) < 0)
 				return c;
 		} else if (c == '/') {
 			/*Store body value*/
@@ -779,7 +799,7 @@ lex_get_re (Sophon_VM *vm, Sophon_TokenValue *val)
 			break;
 		}
 
-		if ((c = lex_getc(vm)) < 0)
+		if ((c = lex_re_getc(vm)) < 0)
 			return c;
 	}
 
@@ -798,7 +818,7 @@ lex_get_re (Sophon_VM *vm, Sophon_TokenValue *val)
 				break;
 
 			if (!lex_get_id_cont(vm, c)) {
-				lex_unget(vm, c);
+				lex_unget_n(vm, 1);
 				break;
 			}
 		}

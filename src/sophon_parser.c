@@ -109,6 +109,9 @@ parser_error (Sophon_VM *vm, int type, Sophon_Location *loc, const char *fmt, ..
 		p->flags |= SOPHON_PARSER_FL_ERROR;
 		sophon_prerr("Error: ");
 	} else {
+		if (p->flags & SOPHON_PARSER_FL_NO_WARNING)
+			return;
+
 		sophon_prerr("Warning: ");
 	}
 
@@ -870,8 +873,10 @@ parser_add_var (Sophon_VM *vm, Sophon_Location *loc, Sophon_String *name)
 	Sophon_ParserData *p = (Sophon_ParserData*)vm->parser_data;
 	Sophon_Function *func;
 	Sophon_Result r;
+#if 0
 	char *cstr;
 	Sophon_U32 len;
+#endif
 
 	func = FUNC(0)->func;
 
@@ -898,11 +903,13 @@ parser_add_var (Sophon_VM *vm, Sophon_Location *loc, Sophon_String *name)
 	}
 
 redef:
+#if 0
 	if (sophon_string_new_utf8_cstr(vm, name, &cstr, &len) >= 0) {
 		parser_error(vm, PARSER_WARNING, loc,
 					"variant \"%s\" has already been defined", cstr);
 		sophon_string_free_utf8_cstr(vm, cstr, len);
 	}
+#endif
 	return SOPHON_OK;
 }
 
@@ -2700,7 +2707,7 @@ sophon_parse (Sophon_VM *vm, Sophon_Module *mod, Sophon_Encoding enc,
 
 	p->module = mod;
 	p->flags = flags & (SOPHON_PARSER_FL_EVAL|SOPHON_PARSER_FL_STRICT|\
-				SOPHON_PARSER_FL_SHELL);
+				SOPHON_PARSER_FL_SHELL|SOPHON_PARSER_FL_NO_WARNING);
 	p->flags |= SOPHON_PARSER_FL_FUNC_BEGIN;
 
 	/*Add a new function*/
@@ -2797,6 +2804,7 @@ sophon_eval (Sophon_VM *vm, Sophon_Encoding enc, Sophon_IOFunc input,
 	mod = sophon_module_create(vm);
 
 	r = sophon_parse(vm, mod, enc, input, data, flags|SOPHON_PARSER_FL_EVAL);
+
 	if (r == SOPHON_OK) {
 		Sophon_Value thisv;
 

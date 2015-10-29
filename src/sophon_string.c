@@ -532,3 +532,21 @@ end:
 	return nstr;
 }
 
+Sophon_Result
+sophon_string_get_item (Sophon_VM *vm, Sophon_String *str,
+			Sophon_U32 id, Sophon_Value *retv)
+{
+	SOPHON_ASSERT(vm && str && retv);
+
+	if (id < str->length) {
+		Sophon_String *sub;
+
+		sub = sophon_string_from_chars(vm, str->chars + id, 1);
+		sophon_value_set_string(vm, retv, sub);
+	} else {
+		sophon_value_set_undefined(vm, retv);
+	}
+
+	return SOPHON_OK;
+}
+

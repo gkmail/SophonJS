@@ -46,7 +46,7 @@
 	#define SOPHON_JSON_PARSER_STACK_SIZE 512
 #endif
 
-#if 0
+#if 1
 #define DEBUG(a) SOPHON_INFO(a)
 #else
 #define DEBUG(a)
@@ -185,6 +185,7 @@ json_parse (Sophon_VM *vm, ParserData *p, Sophon_Value *retv)
 next_state:
 	if (p->fetch.t == 0xFFFF) {
 		tok = sophon_lex(vm, &p->fetch.v, &p->fetch.l);
+
 		DEBUG(("get token %d", tok));
 
 		if ((tok != SOPHON_ERR_EOF) && tok < 0)

@@ -1,5 +1,5 @@
-#ARCH:=i686-linux
-ARCH:=x86_64-linux
+ARCH:=i686-linux
+#ARCH:=x86_64-linux
 #DEBUG:=1
 #8BITS_CHAR:=1
 #MM_DEBUG:=1

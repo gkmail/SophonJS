@@ -69,7 +69,7 @@ sophon_decl_load (Sophon_VM *vm, Sophon_Module *mod, Sophon_Object *obj,
 	const Sophon_Decl *decl = decls;
 	Sophon_Result r;
 
-	SOPHON_ASSERT(vm && obj && decls);
+	SOPHON_ASSERT(vm && decls);
 
 	if (!mod) {
 		mod = vm->glob_module;
