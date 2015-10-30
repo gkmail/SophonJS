@@ -250,7 +250,7 @@ parser_gen_code (Sophon_VM *vm, Sophon_Function *func, Sophon_ParserOp **ops)
 						loc.first_column = 0;
 						loc.last_column = 0;
 
-						parser_error(vm, PARSER_ERROR, &loc,
+						sophon_parser_error(vm, SOPHON_PARSER_ERROR, &loc,
 									"\"%s\" is not in a block",
 									brk ? "break" : "continue");
 						r = SOPHON_ERR_PARSE;
@@ -322,8 +322,6 @@ parser_gen_code (Sophon_VM *vm, Sophon_Function *func, Sophon_ParserOp **ops)
 
 	if ((ip > 0xFFFF) || (ss > 0xFFFF) || (ls > 0xFFFF))
 		sophon_fatal("instructions overflow");
-
-	SOPHON_ASSERT(sp == 0);
 
 calc_end:
 	sophon_mm_free(vm, bs, sizeof(BlockStack));
@@ -447,8 +445,10 @@ calc_end:
 			} while (op != *ops);
 
 #ifdef SOPHON_DEBUG
-			sophon_ins_dump_buffer(vm, func, func->f.ibuf, func->ibuf_size);
+			sophon_ins_dump_buffer(vm, func, func->f.ibuf, func->ibuf_size,
+						SOPHON_INS_FL_IP|SOPHON_INS_FL_LINE);
 #endif
+			SOPHON_ASSERT(sp == 0);
 		}
 	}
 

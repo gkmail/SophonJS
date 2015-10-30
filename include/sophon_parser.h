@@ -61,6 +61,19 @@ extern "C" {
 #define sophon_parser_init(vm)  ((vm)->parser_data = NULL)
 #define sophon_parser_deinit(vm)
 
+/**\brief Parser information type*/
+enum {
+	SOPHON_PARSER_ERROR,   /**< Error*/
+	SOPHON_PARSER_WARNING  /**< Warning*/
+};
+
+/**
+ * \brief Check if the parser is in strict mode
+ * \param[in] vm The current virtual machine
+ * \return If parser is in strict mode
+ */
+extern Sophon_Bool  sophon_parser_strict_mode (Sophon_VM *vm);
+
 /**
  * \brief Parse the input
  * \param[in] vm The current virtual machine
@@ -78,6 +91,28 @@ extern Sophon_Result sophon_parse (Sophon_VM *vm,
 						Sophon_IOFunc input,
 						Sophon_Ptr data,
 						Sophon_U32 flags);
+
+/**
+ * \brief Output parser error message
+ * \param[in] vm The current virtual machine
+ * \param type Information type
+ * \param[in] loc Location of the error
+ * \param[in] fmt Format string
+ */
+extern void          sophon_parser_error (Sophon_VM *vm,
+						int type, Sophon_Location *loc,
+						const char *fmt, ...);
+
+/**
+ * \brief Output parser error message
+ * \param[in] vm The current virtual machine
+ * \param type Information type
+ * \param[in] loc Location of the error
+ * \param[in] fmt Format string
+ */
+extern void          sophon_parser_errorv (Sophon_VM *vm,
+						int type, Sophon_Location *loc,
+						const char *fmt, va_list ap);
 
 /**
  * \brief Parse the input and run the instructions

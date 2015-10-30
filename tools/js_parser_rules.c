@@ -43,12 +43,62 @@ add_rule(N_STATEMENT_LIST, N_STATEMENT_LIST, N_STATEMENT, R_MERGE_OPS);
 add_rule(N_BLOCK, '{', '}', R_EMPTY_OPS);
 add_rule(N_BLOCK, '{', N_STATEMENT_LIST, '}', R_COPY_1);
 
+add_rule(N_NAME, T_IDENTIFIER, R_COPY_0);
+add_rule(N_NAME, T_get, R_KEY_TO_ID);
+add_rule(N_NAME, T_set, R_KEY_TO_ID);
+
+add_rule(N_PNAME, T_IDENTIFIER, R_COPY_0);
+add_rule(N_PNAME, T_null, R_KEY_TO_ID);
+add_rule(N_PNAME, T_true, R_KEY_TO_ID);
+add_rule(N_PNAME, T_false, R_KEY_TO_ID);
+add_rule(N_PNAME, T_in, R_KEY_TO_ID);
+add_rule(N_PNAME, T_try, R_KEY_TO_ID);
+add_rule(N_PNAME, T_class, R_KEY_TO_ID);
+add_rule(N_PNAME, T_enum, R_KEY_TO_ID);
+add_rule(N_PNAME, T_extends, R_KEY_TO_ID);
+add_rule(N_PNAME, T_super, R_KEY_TO_ID);
+add_rule(N_PNAME, T_const, R_KEY_TO_ID);
+add_rule(N_PNAME, T_export, R_KEY_TO_ID);
+add_rule(N_PNAME, T_import, R_KEY_TO_ID);
+add_rule(N_PNAME, T_public, R_KEY_TO_ID);
+add_rule(N_PNAME, T_yield, R_KEY_TO_ID);
+add_rule(N_PNAME, T_interface, R_KEY_TO_ID);
+add_rule(N_PNAME, T_break, R_KEY_TO_ID);
+add_rule(N_PNAME, T_case, R_KEY_TO_ID);
+add_rule(N_PNAME, T_do, R_KEY_TO_ID);
+add_rule(N_PNAME, T_instanceof, R_KEY_TO_ID);
+add_rule(N_PNAME, T_typeof, R_KEY_TO_ID);
+add_rule(N_PNAME, T_else, R_KEY_TO_ID);
+add_rule(N_PNAME, T_new, R_KEY_TO_ID);
+add_rule(N_PNAME, T_var, R_KEY_TO_ID);
+add_rule(N_PNAME, T_catch, R_KEY_TO_ID);
+add_rule(N_PNAME, T_finally, R_KEY_TO_ID);
+add_rule(N_PNAME, T_return, R_KEY_TO_ID);
+add_rule(N_PNAME, T_void, R_KEY_TO_ID);
+add_rule(N_PNAME, T_continue, R_KEY_TO_ID);
+add_rule(N_PNAME, T_for, R_KEY_TO_ID);
+add_rule(N_PNAME, T_switch, R_KEY_TO_ID);
+add_rule(N_PNAME, T_while, R_KEY_TO_ID);
+add_rule(N_PNAME, T_debugger, R_KEY_TO_ID);
+add_rule(N_PNAME, T_function, R_KEY_TO_ID);
+add_rule(N_PNAME, T_this, R_KEY_TO_ID);
+add_rule(N_PNAME, T_with, R_KEY_TO_ID);
+add_rule(N_PNAME, T_default, R_KEY_TO_ID);
+add_rule(N_PNAME, T_if, R_KEY_TO_ID);
+add_rule(N_PNAME, T_throw, R_KEY_TO_ID);
+add_rule(N_PNAME, T_delete, R_KEY_TO_ID);
+add_rule(N_PNAME, T_implements, R_KEY_TO_ID);
+
+add_rule(N_MNAME, N_PNAME, R_COPY_0);
+add_rule(N_MNAME, T_get, R_KEY_TO_ID);
+add_rule(N_MNAME, T_set, R_KEY_TO_ID);
+
 add_rule(N_STATEMENT, ';', R_EMPTY_STATEMENT);
 add_rule(N_STATEMENT, N_BLOCK, R_COPY_0);
 add_rule(N_STATEMENT, T_continue, ';', R_CONTINUE);
-add_rule(N_STATEMENT, T_continue, T_IDENTIFIER, ';', R_CONTINUE_LABEL);
+add_rule(N_STATEMENT, T_continue, N_NAME, ';', R_CONTINUE_LABEL);
 add_rule(N_STATEMENT, T_break, ';', R_BREAK);
-add_rule(N_STATEMENT, T_break, T_IDENTIFIER, ';', R_BREAK_LABEL);
+add_rule(N_STATEMENT, T_break, N_NAME, ';', R_BREAK_LABEL);
 add_rule(N_STATEMENT, T_return, ';', R_RETURN);
 add_rule(N_STATEMENT, T_return, N_EXPR, ';', R_RETURN_VALUE);
 add_rule(N_STATEMENT, T_var, N_VAR_DECL_LIST, ';', R_VAR_STATEMENT);
@@ -59,7 +109,7 @@ add_rule(N_STATEMENT, T_while, '(', N_EXPR, ')', N_STATEMENT, R_WHILE_STATEMENT)
 add_rule(N_STATEMENT, N_FOR_STATEMENT, R_COPY_0);
 add_rule(N_STATEMENT, T_with, '(', N_EXPR, ')', R_FRAME_BEGIN, N_STATEMENT, R_WITH);
 add_rule(N_STATEMENT, T_switch, '(', N_EXPR, ')', N_CASE_BLOCK, R_SWITCH);
-add_rule(N_STATEMENT, T_IDENTIFIER, ':', N_STATEMENT, R_LABEL);
+add_rule(N_STATEMENT, N_NAME, ':', N_STATEMENT, R_LABEL);
 add_rule(N_STATEMENT, T_throw, N_EXPR, ';', R_THROW);
 add_rule(N_STATEMENT, N_TRY_STATEMENT, R_COPY_0);
 add_rule(N_STATEMENT, T_debugger, R_DEBUGGER);
@@ -70,14 +120,14 @@ add_rule(N_EXPR_STATEMENT, N_EXPR, ';', R_EXPR_STATEMENT);
 add_rule(N_VAR_DECL_LIST, N_VAR_DECL, R_COPY_0);
 add_rule(N_VAR_DECL_LIST, N_VAR_DECL_LIST, ',', N_VAR_DECL, R_MERGE_OPS_2);
 
-add_rule(N_VAR_DECL, T_IDENTIFIER, R_VAR);
-add_rule(N_VAR_DECL, T_IDENTIFIER, '=', N_ASSIGN_EXPR, R_VAR_INIT);
+add_rule(N_VAR_DECL, N_NAME, R_VAR);
+add_rule(N_VAR_DECL, N_NAME, '=', N_ASSIGN_EXPR, R_VAR_INIT);
 
 add_rule(N_VAR_DECL_LIST_NO_IN, N_VAR_DECL_NO_IN, R_COPY_0);
 add_rule(N_VAR_DECL_LIST_NO_IN, N_VAR_DECL_LIST_NO_IN, ',', N_VAR_DECL_NO_IN, R_MERGE_OPS_2);
 
-add_rule(N_VAR_DECL_NO_IN, T_IDENTIFIER, R_VAR);
-add_rule(N_VAR_DECL_NO_IN, T_IDENTIFIER, '=', N_ASSIGN_EXPR_NO_IN, R_VAR_INIT);
+add_rule(N_VAR_DECL_NO_IN, N_NAME, R_VAR);
+add_rule(N_VAR_DECL_NO_IN, N_NAME, '=', N_ASSIGN_EXPR_NO_IN, R_VAR_INIT);
 
 add_rule(N_IF_STATEMENT, T_if, '(', N_EXPR, ')', N_STATEMENT, R_IF_STATEMENT);
 add_rule(N_IF_STATEMENT, T_if, '(', N_EXPR, ')', N_STATEMENT, T_else, N_STATEMENT, R_IF_ELSE_STATEMENT);
@@ -107,25 +157,25 @@ add_rule(N_TRY_STATEMENT, T_try, N_BLOCK, N_CATCH, R_TRY_CATCH);
 add_rule(N_TRY_STATEMENT, T_try, N_BLOCK, N_FINALLY, R_TRY_FINALLY);
 add_rule(N_TRY_STATEMENT, T_try, N_BLOCK, N_CATCH, N_FINALLY, R_TRY_CATCH_FINALLY);
 
-add_rule(N_CATCH, T_catch, '(', T_IDENTIFIER, ')', R_FRAME_BEGIN, N_BLOCK, R_CATCH);
+add_rule(N_CATCH, T_catch, '(', N_NAME, ')', R_FRAME_BEGIN, N_BLOCK, R_CATCH);
 
 add_rule(N_FINALLY, T_finally, N_BLOCK, R_COPY_1);
 
 add_rule(N_ID_OR_EMPTY, R_NULL);
-add_rule(N_ID_OR_EMPTY, T_IDENTIFIER, R_COPY_0);
+add_rule(N_ID_OR_EMPTY, N_NAME, R_COPY_0);
 
-add_rule(N_FUNC_DECL, T_function, T_IDENTIFIER, '(', R_FUNC_BEGIN, N_FORMAL_PARAM_LIST_OR_EMPTY, ')', '{', R_FUNC_BODY, N_PROGRAM, '}', R_FUNC_DECL);
+add_rule(N_FUNC_DECL, T_function, N_NAME, '(', R_FUNC_BEGIN, N_FORMAL_PARAM_LIST_OR_EMPTY, ')', '{', R_FUNC_BODY, N_PROGRAM, '}', R_FUNC_DECL);
 
 add_rule(N_FUNC_EXPR, T_function, N_ID_OR_EMPTY, '(', R_FUNC_BEGIN, N_FORMAL_PARAM_LIST_OR_EMPTY, ')', '{', R_FUNC_BODY, N_PROGRAM, '}', R_FUNC_EXPR);
 
 add_rule(N_FORMAL_PARAM_LIST_OR_EMPTY);
 add_rule(N_FORMAL_PARAM_LIST_OR_EMPTY, N_FORMAL_PARAM_LIST);
 
-add_rule(N_FORMAL_PARAM_LIST, T_IDENTIFIER, R_PARAM);
-add_rule(N_FORMAL_PARAM_LIST, N_FORMAL_PARAM_LIST, ',', T_IDENTIFIER, R_PARAM_2);
+add_rule(N_FORMAL_PARAM_LIST, N_NAME, R_PARAM);
+add_rule(N_FORMAL_PARAM_LIST, N_FORMAL_PARAM_LIST, ',', N_NAME, R_PARAM_2);
 
 add_rule(N_PRIMARY_EXPR, T_NUMBER,     R_EXPR_CONST);
-add_rule(N_PRIMARY_EXPR, T_IDENTIFIER, R_EXPR_ID);
+add_rule(N_PRIMARY_EXPR, N_NAME,       R_EXPR_ID);
 add_rule(N_PRIMARY_EXPR, T_STRING,     R_EXPR_CONST);
 add_rule(N_PRIMARY_EXPR, T_REGEXP,     R_EXPR_REGEXP);
 add_rule(N_PRIMARY_EXPR, T_true,       R_EXPR_TRUE);
@@ -139,13 +189,13 @@ add_rule(N_PRIMARY_EXPR, '(', N_EXPR, ')', R_COPY_1);
 add_rule(N_MEMBER_EXPR, N_PRIMARY_EXPR, R_COPY_0);
 add_rule(N_MEMBER_EXPR, N_FUNC_EXPR,    R_COPY_0);
 add_rule(N_MEMBER_EXPR, N_MEMBER_EXPR, '[', N_EXPR, ']', P_MEMBER,   R_GET_PROP);
-add_rule(N_MEMBER_EXPR, N_MEMBER_EXPR, '.', T_IDENTIFIER, P_MEMBER,  R_MEMBER);
+add_rule(N_MEMBER_EXPR, N_MEMBER_EXPR, '.', N_MNAME, P_MEMBER,  R_MEMBER);
 add_rule(N_MEMBER_EXPR, T_new, N_MEMBER_EXPR, N_ARGUMENTS_OR_EMPTY, P_NEW, R_NEW);
 
 add_rule(N_LEFT_EXPR, N_MEMBER_EXPR, R_COPY_0);
 add_rule(N_LEFT_EXPR, N_LEFT_EXPR, N_ARGUMENTS, P_MEMBER,   R_CALL);
 add_rule(N_LEFT_EXPR, N_LEFT_EXPR, '[', N_EXPR, ']', P_MEMBER, R_GET_PROP);
-add_rule(N_LEFT_EXPR, N_LEFT_EXPR, '.', T_IDENTIFIER, P_MEMBER, R_MEMBER);
+add_rule(N_LEFT_EXPR, N_LEFT_EXPR, '.', N_NAME, P_MEMBER, R_MEMBER);
 
 add_rule(N_MATH_EXPR, N_LEFT_EXPR, R_COPY_0);
 add_rule(N_MATH_EXPR, N_MATH_EXPR, T_INC, P_UNARY, R_POST_INC);
@@ -258,12 +308,16 @@ add_rule(N_PROP_AND_VALUE_LIST, N_PROP_AND_VALUE_LIST, ',', N_PROP_ASSIGN, R_APP
 add_rule(N_PROP_ASSIGN, N_PROP_NAME, ':', N_ASSIGN_EXPR, R_PROP);
 add_rule(N_PROP_ASSIGN, T_get, ':', N_ASSIGN_EXPR, R_PROP);
 add_rule(N_PROP_ASSIGN, T_set, ':', N_ASSIGN_EXPR, R_PROP);
-add_rule(N_PROP_ASSIGN, T_get, N_PROP_NAME, '(', ')', '{', R_PROP_GET_BEGIN, N_PROGRAM, '}', R_PROP_GET);
-add_rule(N_PROP_ASSIGN, T_set, N_PROP_NAME, '(', T_IDENTIFIER, ')', '{', R_PROP_SET_BEGIN, N_PROGRAM, '}', R_PROP_SET);
+add_rule(N_PROP_ASSIGN, T_get, N_ALL_PROP_NAME, '(', ')', '{', R_PROP_GET_BEGIN, N_PROGRAM, '}', R_PROP_GET);
+add_rule(N_PROP_ASSIGN, T_set, N_ALL_PROP_NAME, '(', N_NAME, ')', '{', R_PROP_SET_BEGIN, N_PROGRAM, '}', R_PROP_SET);
 
 add_rule(N_PROP_NAME, T_STRING, R_COPY_0);
 add_rule(N_PROP_NAME, T_NUMBER, R_COPY_0);
-add_rule(N_PROP_NAME, T_IDENTIFIER, R_COPY_0);
+add_rule(N_PROP_NAME, N_PNAME, R_COPY_0);
+
+add_rule(N_ALL_PROP_NAME, T_STRING, R_COPY_0);
+add_rule(N_ALL_PROP_NAME, T_NUMBER, R_COPY_0);
+add_rule(N_ALL_PROP_NAME, N_MNAME, R_COPY_0);
 
 add_rule(N_EXPR_OR_EMPTY, R_EMPTY_EXPR);
 add_rule(N_EXPR_OR_EMPTY, N_EXPR, R_COPY_0);

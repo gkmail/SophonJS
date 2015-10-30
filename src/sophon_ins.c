@@ -181,7 +181,7 @@ sophon_ins_dump (Sophon_VM *vm, Sophon_Function *func,
 
 void
 sophon_ins_dump_buffer (Sophon_VM *vm, Sophon_Function *func,
-			Sophon_U8 *pi, Sophon_U32 len)
+			Sophon_U8 *pi, Sophon_U32 len, Sophon_U32 flags)
 {
 	Sophon_Int off = 0;
 	Sophon_Int left = len;
@@ -192,12 +192,13 @@ sophon_ins_dump_buffer (Sophon_VM *vm, Sophon_Function *func,
 
 	while (left > 0) {
 #ifdef SOPHON_LINE_INFO
-		if (func->lbuf) {
+		if (func->lbuf && (flags & SOPHON_INS_FL_LINE)) {
 			sophon_pr("%05d:", sophon_ins_get_line(vm, func, pi));
 		}
 #endif /*SOPHON_LINE_INFO*/
 
-		sophon_pr("%05d: ", off);
+		if (flags & SOPHON_INS_FL_IP)
+			sophon_pr("%05d: ", off);
 
 		r = sophon_ins_dump(vm, func, pi, left);
 
@@ -566,8 +567,8 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 	}
 #define I_prop_get_run\
 	if (sophon_value_define_prop(vm, STACK(2), STACK(1),\
-					SOPHON_VALUE_UNDEFINED,\
 					STACK(0),\
+					SOPHON_VALUE_UNDEFINED,\
 					0, SOPHON_FL_HAVE_GET) != SOPHON_OK) {\
 		THROW;\
 	}

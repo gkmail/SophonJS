@@ -37,10 +37,10 @@ static const char*
 test_names[] = {
 	"ch06",
 	"ch07",
-	/*"ch08",
+	"ch08",
 	"ch09",
 	"ch10",
-	"ch11",
+	/*"ch11",
 	"ch12",
 	"ch13",
 	"ch14",

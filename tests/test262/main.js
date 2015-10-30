@@ -7,28 +7,45 @@ function myTest262(json)
 	})
 }
 
-var ignoreTests=[
-	"TestCases/ch07/7.3/S7.3_A1.1_T1.js"
-];
-
 function myRunTest(test)
 {
-	var r = 0;
+	var myTestException = undefined;
 
 	try {
-		eval(test.code);
+		eval("function myTestCase(){"+test.code+"};myTestCase()");
 	} catch (e) {
-		if (ignoreTests.indexOf(test.path) != -1) {
-			r = 1;
+		myTestException = e;
+	}
+
+	console.log("TEST: %s", test.description);
+
+	var fail = false;
+
+	if (test.negative != undefined) {
+		var neg = test.negative === "NotEarlyError" ? test.negative :
+			(test.negative === "^((?!NotEarlyError).)*$" ?
+            test.negative : ".");
+
+		if (myTestException == undefined) {
+			console.log("FAILED: cannot get excetpion '%s'", neg);
+			fail = true;
+		} else if (!(new RegExp(neg, "i").test(myTestException))) {
+			console.log("FAILED: expect exception '%s', but get '%s'", neg, myTestException);
+			fail = true;
+		}
+	} else {
+		if (myTestException != undefined) {
+			console.log("FAILED: get exception '%s'", myTestException);
+			fail = true;
 		}
 	}
 
-	if (r == 1) {
+	if (fail) {
 		dump(test.code);
+	} else {
+		console.log("PASSED");
 	}
 
-	console.log("%s: %s", test.description, r ? "failed" : "passed");
-
-	if (r == 1)
+	if (fail)
 		throw Error("test failed");
 }

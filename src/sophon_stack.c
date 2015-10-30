@@ -393,20 +393,27 @@ sophon_stack_get_binding (Sophon_VM *vm, Sophon_String *name,
 				if (frame->gc_type == SOPHON_GC_GlobalFrame) {
 					if (df->thisv == vm->glob_module->globv) {
 						if (!SOPHON_VALUE_IS_UNDEFINED(df->thisv))
-							return sophon_value_get(vm, df->thisv,
+							if ((r = sophon_value_get(vm, df->thisv,
 										SOPHON_VALUE_GC(name),
-										getv, SOPHON_FL_THROW);
+										getv,
+										SOPHON_FL_THROW|SOPHON_FL_NONE)) !=
+										SOPHON_NONE)
+								return r;
 					} else {
 						if (!SOPHON_VALUE_IS_UNDEFINED(df->thisv))
 							if ((r = sophon_value_get(vm, df->thisv,
 										SOPHON_VALUE_GC(name),
-										getv, SOPHON_FL_NONE)) != SOPHON_NONE)
+										getv, SOPHON_FL_NONE)) !=
+										SOPHON_NONE)
 								return r;
 
-						return sophon_value_get(vm,
+						if ((r = sophon_value_get(vm,
 									vm->glob_module->globv,
 									SOPHON_VALUE_GC(name),
-									getv, SOPHON_FL_THROW);
+									getv,
+									SOPHON_FL_THROW|SOPHON_FL_NONE)) !=
+									SOPHON_NONE)
+						  return r;
 					}
 				}
 				break;
@@ -436,8 +443,8 @@ sophon_stack_get_binding (Sophon_VM *vm, Sophon_String *name,
 		frame = frame->bottom;
 	}
 
-	sophon_value_set_undefined(vm, getv);
-	return SOPHON_OK;
+	sophon_throw(vm, vm->ReferenceError, "binding has not been defined");
+	return SOPHON_ERR_THROW;
 }
 
 Sophon_Result

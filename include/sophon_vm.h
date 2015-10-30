@@ -54,9 +54,9 @@ extern "C" {
 
 #define SOPHON_FOR_EACH_INTERNAL_STRING(s)\
 	s(use_strict, "use strict")\
-	s(class,      "[Class]")\
-	s(call,       "[Call]")\
-	s(proto,      "[Proto]")\
+	s(__class,    "[Class]")\
+	s(__call,     "[Call]")\
+	s(__proto,    "[Proto]")\
 	s(empty,      "")\
 	s(comma,      ",")\
 	s(lb,         "{")\
@@ -68,6 +68,50 @@ extern "C" {
 	s(colons,     ":")\
 	s(space,      " ")\
 	s(dollar,     "$")
+
+#define SOPHON_FOR_EACH_KEYWORD(s)\
+	s(get)\
+	s(set)\
+	s(true)\
+	s(false)\
+	s(null)\
+	s(in)\
+	s(try)\
+	s(class)\
+	s(enum)\
+	s(extends)\
+	s(super)\
+	s(const)\
+	s(export)\
+	s(import)\
+	s(public)\
+	s(yield)\
+	s(interface)\
+	s(break)\
+	s(case)\
+	s(do)\
+	s(instanceof)\
+	s(typeof)\
+	s(else)\
+	s(new)\
+	s(var)\
+	s(catch)\
+	s(finally)\
+	s(return)\
+	s(void)\
+	s(continue)\
+	s(for)\
+	s(switch)\
+	s(function)\
+	s(while)\
+	s(debugger)\
+	s(this)\
+	s(with)\
+	s(default)\
+	s(if)\
+	s(throw)\
+	s(delete)\
+	s(implements)
 
 #define SOPHON_FOR_EACH_STRING(s)\
 	s(Object)\
@@ -85,23 +129,17 @@ extern "C" {
 	s(name)\
 	s(length)\
 	s(eval)\
-	s(null)\
 	s(undefined)\
 	s(object)\
 	s(string)\
 	s(number)\
-	s(function)\
 	s(boolean)\
-	s(true)\
-	s(false)\
 	s(NaN)\
 	s(Infinity)\
 	s(prototype)\
 	s(message)\
 	s(value)\
 	s(writable)\
-	s(get)\
-	s(set)\
 	s(enumerable)\
 	s(configurable)\
 	s(toString)\
@@ -113,6 +151,7 @@ extern "C" {
 	s(exec)\
 	s(JSON)\
 	s(stringify)\
+	SOPHON_FOR_EACH_KEYWORD(s)\
 	SOPHON_FOR_EACH_ERROR(s)
 
 /**\brief Virtual machine*/

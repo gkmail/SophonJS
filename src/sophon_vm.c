@@ -237,7 +237,7 @@ sophon_throw_value (Sophon_VM *vm, Sophon_Value excepv)
 
 	vm->excepv = excepv;
 
-	sophon_prerr("exception \"");
+	sophon_prerr("exception ");
 
 	if (sophon_value_to_string(vm, vm->excepv, &str) == SOPHON_OK) {
 		if (sophon_string_new_utf8_cstr(vm, str, &buf, &len) >= 0) {
@@ -245,7 +245,7 @@ sophon_throw_value (Sophon_VM *vm, Sophon_Value excepv)
 			sophon_string_free_utf8_cstr(vm, buf, len);
 		}
 	}
-	sophon_prerr("\"\n");
+	sophon_prerr("\n");
 
 	sophon_trace(vm);
 }

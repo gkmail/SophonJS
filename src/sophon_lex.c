@@ -43,7 +43,7 @@
 #include "sophon_js_parser.h"
 #include "sophon_js_lex.c"
 
-#if 1
+#if 0
 #define DEBUG(a) SOPHON_INFO(a)
 #else
 #define DEBUG(a)
@@ -54,6 +54,24 @@
 #endif
 
 #define LEX_CBUF_PADDING 16
+
+/*Output error message*/
+static void
+lex_error (Sophon_VM *vm, Sophon_Int type, const char *fmt, ...)
+{
+	Sophon_LexData *l = (Sophon_LexData*)vm->lex_data;
+	Sophon_Location loc;
+	va_list ap;
+
+	loc.first_line = l->line;
+	loc.last_line  = l->line;
+	loc.first_column = l->column;
+	loc.last_column  = l->column;
+
+	va_start(ap, fmt);
+	sophon_parser_errorv(vm, type, &loc, fmt, ap);
+	va_end(ap);
+}
 
 /*Append a character into the text buffer*/
 static Sophon_Int
@@ -246,7 +264,7 @@ lex_text (Sophon_VM *vm)
 
 /*Convert character to number*/
 static Sophon_Int
-lex_char_to_hex (Sophon_Char ch)
+lex_char_to_hex (Sophon_VM *vm, Sophon_Char ch)
 {
 	if (sophon_isdigit(ch))
 		return ch - '0';
@@ -254,6 +272,9 @@ lex_char_to_hex (Sophon_Char ch)
 		return ch - 'a' + 10;
 	else if (((ch) >= 'A') && ((ch) <= 'F'))
 		return ch - 'A' + 10;
+
+	lex_error(vm, SOPHON_PARSER_ERROR,
+				"expect a hexadecimal number character");
 	return SOPHON_ERR_LEX;
 }
 
@@ -276,7 +297,7 @@ lex_get_escape_uc (Sophon_VM *vm)
 		br_end = SOPHON_FALSE;
 	} else {
 		br = SOPHON_FALSE;
-		if ((v = lex_char_to_hex(c)) < 0) {
+		if ((v = lex_char_to_hex(vm, c)) < 0) {
 			return v;
 		}
 
@@ -293,7 +314,7 @@ lex_get_escape_uc (Sophon_VM *vm)
 			break;
 		}
 
-		if ((v = lex_char_to_hex(c)) < 0)
+		if ((v = lex_char_to_hex(vm, c)) < 0)
 			return v;
 
 		code = (code << 4) | v;
@@ -303,8 +324,11 @@ lex_get_escape_uc (Sophon_VM *vm)
 		if ((c = lex_getc(vm)) < 0)
 			return c;
 
-		if (c != '}')
+		if (c != '}') {
+			lex_error(vm, SOPHON_PARSER_ERROR,
+						"unterminated unicode escape sequence");
 			return SOPHON_ERR_LEX;
+		}
 	}
 
 	return code;
@@ -319,7 +343,6 @@ lex_get_str (Sophon_VM *vm, Sophon_TokenValue *val)
 	Sophon_Char code;
 	Sophon_String *str;
 	Sophon_Int c, v;
-	Sophon_Bool loop;
 
 	l->tlen--;
 
@@ -367,12 +390,12 @@ lex_get_str (Sophon_VM *vm, Sophon_TokenValue *val)
 				case 'x':
 					if ((c = lex_getc(vm)) < 0)
 						return c;
-					if ((v = lex_char_to_hex(c)) < 0)
+					if ((v = lex_char_to_hex(vm, c)) < 0)
 						return v;
 					code = v;
 					if ((c = lex_getc(vm)) < 0)
 						return c;
-					if ((v = lex_char_to_hex(c)) < 0)
+					if ((v = lex_char_to_hex(vm, c)) < 0)
 						return v;
 					code = (code << 4) | v;
 
@@ -385,7 +408,8 @@ lex_get_str (Sophon_VM *vm, Sophon_TokenValue *val)
 
 #ifdef SOPHON_8BITS_CHAR
 					if (code > 0xFF) {
-						SOPHON_ERROR(("illegal character"));
+						lex_error(vm, SOPHON_PARSER_ERROR,
+									"illegal unicode value");
 						return SOPHON_ERR_LEX;
 					}
 #endif
@@ -402,28 +426,6 @@ lex_get_str (Sophon_VM *vm, Sophon_TokenValue *val)
 				case 0x2028:
 				case 0x2029:
 #endif
-					do {
-						if ((c = lex_getc(vm)) < 0)
-							return c;
-						if (c == '\r') {
-							if ((c = lex_getc(vm)) < 0)
-								return c;
-							if (c != '\n')
-								lex_unget(vm, c);
-
-							loop = SOPHON_TRUE;
-						} else if ((c == '\n')
-#ifndef SOPHON_8BITS_CHAR
-									|| (c == 0x2028) || (c == 0x2029)
-#endif
-									) {
-							loop = SOPHON_TRUE;
-						} else {
-							lex_unget(vm, c);
-							loop = SOPHON_FALSE;
-						}
-					} while (loop);
-
 					l->tlen = len - 1;
 					break;
 				default:
@@ -431,9 +433,17 @@ lex_get_str (Sophon_VM *vm, Sophon_TokenValue *val)
 					l->tbuf[len - 1] = c;
 					break;
 			}
-		} else if ((c == end) || (c == '\n')) {
+		} else if (c == end) {
 			l->tlen--;
 			break;
+		} else if ((c == '\n') || (c == '\r')
+#ifndef SOPHON_8BITS_CHAR
+					|| (c == 0x2028) || (c == 0x2029)
+#endif
+				  ){
+			lex_error(vm, SOPHON_PARSER_ERROR,
+						"unterminated string");
+			return SOPHON_ERR_LEX;
 		}
 	}
 
@@ -463,39 +473,13 @@ lex_get_str (Sophon_VM *vm, Sophon_TokenValue *val)
 #include "uc_id_cont_table.c"
 #endif
 
-/*Get identifier start character*/
 static Sophon_Bool
-lex_get_id_start (Sophon_VM *vm, Sophon_Char ch)
+lex_is_id_start (Sophon_Int ch)
 {
-	Sophon_LexData *l = (Sophon_LexData*)vm->lex_data;
-	Sophon_Int uc;
-
-retry:
 	switch (ch) {
 		case '_':
 		case '$':
 			return SOPHON_TRUE;
-		case '\\':
-			if ((ch = lex_getc(vm)) < 0)
-				return SOPHON_FALSE;
-
-			if (ch == 'u'){
-				Sophon_U32 len = l->tlen - 1;
-
-				if ((uc = lex_get_escape_uc(vm)) < 0) {
-					lex_unget_n(vm, l->tlen - len);
-					return SOPHON_FALSE;
-				}
-
-				l->tlen = len;
-				l->tbuf[len - 1] = uc;
-
-				ch = uc;
-				goto retry;
-			} else {
-				lex_unget(vm, ch);
-				return SOPHON_FALSE;
-			}
 		default:
 #ifndef SOPHON_8BITS_CHAR
 			return sophon_char_table_search(ch, uc_id_start_table,
@@ -508,14 +492,9 @@ retry:
 	return SOPHON_FALSE;
 }
 
-/*Get identifier continue character*/
 static Sophon_Bool
-lex_get_id_cont (Sophon_VM *vm, Sophon_Char ch)
+lex_is_id_cont (Sophon_Int ch)
 {
-	Sophon_LexData *l = (Sophon_LexData*)vm->lex_data;
-	Sophon_Int uc;
-
-retry:
 	switch (ch) {
 		case '_':
 		case '$':
@@ -524,39 +503,86 @@ retry:
 		case 0x200D:
 #endif
 			return SOPHON_TRUE;
-		case '\\':
-			if ((ch = lex_getc(vm)) < 0)
-				return SOPHON_FALSE;
-
-			if (ch == 'u'){
-				Sophon_U32 len = l->tlen - 1;
-
-				if ((uc = lex_get_escape_uc(vm)) < 0) {
-					lex_unget_n(vm, l->tlen - len);
-					return SOPHON_FALSE;
-				}
-
-				l->tlen = len;
-				l->tbuf[len - 1] = uc;
-
-				ch = uc;
-				goto retry;
-			} else {
-				lex_unget(vm, ch);
-				return SOPHON_FALSE;
-			}
 		default:
 			if (sophon_isdigit(ch))
 				return SOPHON_TRUE;
 #ifndef SOPHON_8BITS_CHAR
-			return sophon_char_table_search(ch, uc_id_cont_table,
-						SOPHON_ARRAY_SIZE(uc_id_cont_table));
+			return sophon_char_table_search(ch, uc_id_start_table,
+						SOPHON_ARRAY_SIZE(uc_id_start_table));
 #else
 			return sophon_isalpha(ch);
 #endif
 	}
 
 	return SOPHON_FALSE;
+}
+
+/*Get identifier start character*/
+static Sophon_Bool
+lex_get_id_start (Sophon_VM *vm, Sophon_Int ch)
+{
+	Sophon_LexData *l = (Sophon_LexData*)vm->lex_data;
+	Sophon_Bool r;
+
+	if (ch == '\\') {
+		ch = lex_getc(vm);
+		if (ch == 'u') {
+			Sophon_U32 len = l->tlen - 1;
+			Sophon_Int uc;
+
+			if ((uc = lex_get_escape_uc(vm)) < 0) {
+				lex_unget_n(vm, l->tlen - len);
+				r = SOPHON_FALSE;
+			} else {
+				r = lex_is_id_start(uc);
+				if (r) {
+					l->tbuf[len - 1] = uc;
+					l->tlen = len;
+				}
+			}
+		} else {
+			lex_unget(vm, ch);
+			r = SOPHON_FALSE;
+		}
+	} else {
+		r = lex_is_id_start(ch);
+	}
+
+	return r;
+}
+
+/*Get identifier continue character*/
+static Sophon_Bool
+lex_get_id_cont (Sophon_VM *vm, Sophon_Int ch)
+{
+	Sophon_LexData *l = (Sophon_LexData*)vm->lex_data;
+	Sophon_Bool r;
+
+	if (ch == '\\') {
+		ch = lex_getc(vm);
+		if (ch == 'u') {
+			Sophon_U32 len = l->tlen - 1;
+			Sophon_Int uc;
+
+			if ((uc = lex_get_escape_uc(vm)) < 0) {
+				lex_unget_n(vm, l->tlen - len);
+				r = SOPHON_FALSE;
+			} else {
+				r = lex_is_id_cont(uc);
+				if (r) {
+					l->tbuf[len - 1] = uc;
+					l->tlen = len;
+				}
+			}
+		} else {
+			lex_unget(vm, ch);
+			r = SOPHON_FALSE;
+		}
+	} else {
+		r = lex_is_id_cont(ch);
+	}
+
+	return r;
 }
 
 /*Get an identifier*/
@@ -569,7 +595,7 @@ lex_get_id (Sophon_VM *vm, Sophon_TokenValue *val, Sophon_Bool keyword)
 	if (keyword) {
 		ch = lex_getc(vm);
 		if (!lex_get_id_cont(vm, ch)) {
-			lex_unget_n(vm, 1);
+			lex_unget(vm, ch);
 			return 0;
 		}
 	}
@@ -586,7 +612,7 @@ lex_get_id (Sophon_VM *vm, Sophon_TokenValue *val, Sophon_Bool keyword)
 				break;
 
 			if (!lex_get_id_cont(vm, ch)) {
-				lex_unget_n(vm, 1);
+				lex_unget(vm, ch);
 				break;
 			}
 		}
@@ -628,6 +654,8 @@ lex_get_num (Sophon_VM *vm, const Sophon_Char *text, Sophon_Int base,
 	if (r == SOPHON_ERR_2BIG) {
 		d = SOPHON_INFINITY;
 	} else if (r < 0) {
+		lex_error(vm, SOPHON_PARSER_ERROR,
+					"illegal character in number");
 		return r;
 	}
 
@@ -688,7 +716,7 @@ lex_action (Sophon_VM *vm, Sophon_U16 action, Sophon_TokenValue *val)
 
 			r = lex_get_num(vm, text, 10, &val->v);
 			if (r < 0)
-				return SOPHON_ERR_LEX;
+				return r;
 
 			return T_NUMBER;
 		case A_DOUBLE:
@@ -698,7 +726,7 @@ lex_action (Sophon_VM *vm, Sophon_U16 action, Sophon_TokenValue *val)
 
 			r = lex_get_num(vm, text, SOPHON_BASE_FLOAT, &val->v);
 			if (r < 0)
-				return SOPHON_ERR_LEX;
+				return r;
 
 			return T_NUMBER;
 		case A_COMMENT_LINE_BEGIN:
@@ -750,8 +778,11 @@ lex_re_getc (Sophon_VM *vm)
 #ifndef SOPHON_8BITS_CHAR
 				|| (c == 0x2028) || (c == 0x2029)
 #endif
-				)
+				) {
+		lex_error(vm, SOPHON_PARSER_ERROR,
+					"unterminated regular expression");
 		return SOPHON_ERR_LEX;
+	}
 
 	return c;
 }
@@ -768,8 +799,11 @@ lex_get_re (Sophon_VM *vm, Sophon_TokenValue *val)
 		return c;
 
 	if (l->tlen == 1) {
-		if (c == '*')
+		if (c == '*') {
+			lex_error(vm, SOPHON_PARSER_ERROR,
+						"illegal character in the regular expression");
 			return SOPHON_ERR_LEX;
+		}
 	}
 
 	while (1) {
@@ -814,11 +848,8 @@ lex_get_re (Sophon_VM *vm, Sophon_TokenValue *val)
 			if ((c < 0) && (c != SOPHON_ERR_EOF))
 				return c;
 
-			if (c == SOPHON_ERR_EOF)
-				break;
-
 			if (!lex_get_id_cont(vm, c)) {
-				lex_unget_n(vm, 1);
+				lex_unget(vm, c);
 				break;
 			}
 		}
@@ -1035,10 +1066,13 @@ retry:
 				break;
 			}
 
-			if((sym == SOPHON_ERR_EOF) && (state == 0))
+			if((sym == SOPHON_ERR_EOF) && (state == 0)) {
 				t = SOPHON_ERR_EOF;
-			else
+			} else {
+				lex_error(vm, SOPHON_PARSER_ERROR,
+							"illegal character");
 				t = SOPHON_ERR_LEX;
+			}
 
 			break;
 		}

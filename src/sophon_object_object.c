@@ -530,7 +530,7 @@ static OBJECT_FUNC(toString)
 		Sophon_String *tail_str;
 		Sophon_String *type_str;
 
-		r = sophon_value_get(vm, thisv, SOPHON_VALUE_GC(vm->class_str),
+		r = sophon_value_get(vm, thisv, SOPHON_VALUE_GC(vm->__class_str),
 					&cv, SOPHON_NONE);
 		if (r == SOPHON_OK) {
 			if ((r = sophon_value_to_string(vm, cv, &type_str)) != SOPHON_OK)

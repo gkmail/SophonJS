@@ -691,6 +691,9 @@ node_calc (ReInput *inp, ReNode *node)
 	ReNode *n = node;
 	Sophon_Int r = 0, c, l;
 
+	if (!n)
+		return r;
+
 	do {
 		switch (n->type) {
 			case N_ANY:
@@ -758,6 +761,9 @@ node_gen_ins (ReInput *inp, ReNode *node, ReIns *ins)
 	ReIns *pi = ins;
 	ReIns *pi2, *pi3;
 	Sophon_Int i;
+
+	if (!n)
+		return pi;
 
 	do {
 		switch (n->type) {
@@ -1037,6 +1043,7 @@ gen_re_data (Sophon_VM *vm, ReInput *inp)
 				sizeof(Sophon_CharRange) * rd->cr_size);
 
 	pi = node_gen_ins(inp, inp->root, rd->ibuf);
+
 	pi->type = I_END;
 	pi++;
 

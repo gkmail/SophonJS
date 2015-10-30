@@ -52,9 +52,6 @@
 #define DEBUG(a)
 #endif
 
-#define PARSER_ERROR   0
-#define PARSER_WARNING 1
-
 #define EXPR_IS_BIND(e)    (!SOPHON_VALUE_IS_UNDEFINED((e)->bind_namev))
 #define EXPR_IS_REF(e)     (EXPR_IS_BIND(e) || ((e)->name_ops))
 #define EXPR_INIT(e)       parser_expr_init(e)
@@ -98,14 +95,24 @@ token_name (Sophon_U16 tok)
 	}
 }
 
-/*Output error/warning message*/
-static void
-parser_error (Sophon_VM *vm, int type, Sophon_Location *loc, const char *fmt, ...)
+void
+sophon_parser_error (Sophon_VM *vm, int type, Sophon_Location *loc,
+			const char *fmt, ...)
 {
-	Sophon_ParserData *p = (Sophon_ParserData*)vm->parser_data;
 	va_list ap;
 
-	if (type == PARSER_ERROR) {
+	va_start(ap, fmt);
+	sophon_parser_errorv(vm, type, loc, fmt, ap);
+	va_end(ap);
+}
+
+void
+sophon_parser_errorv (Sophon_VM *vm, int type, Sophon_Location *loc,
+			const char *fmt, va_list ap)
+{
+	Sophon_ParserData *p = (Sophon_ParserData*)vm->parser_data;
+
+	if (type == SOPHON_PARSER_ERROR) {
 		p->flags |= SOPHON_PARSER_FL_ERROR;
 		sophon_prerr("Error: ");
 	} else {
@@ -131,9 +138,7 @@ parser_error (Sophon_VM *vm, int type, Sophon_Location *loc, const char *fmt, ..
 	}
 
 	if (fmt) {
-		va_start(ap, fmt);
 		sophon_vprerr(fmt, ap);
-		va_end(ap);
 	} else {
 		Sophon_ParserStack *top = &p->stack[p->top-1];
 		Sophon_U16 edge, sym;
@@ -921,7 +926,8 @@ parser_pre_inc_dec (Sophon_VM *vm, Sophon_Bool dec, Sophon_Location *loc,
 	Sophon_ParserData *p = (Sophon_ParserData*)vm->parser_data;
 
 	if (!EXPR_IS_REF(&vin->expr)) {
-		parser_error(vm, PARSER_ERROR, loc, "type is not a reference");
+		sophon_parser_error(vm, SOPHON_PARSER_ERROR, loc,
+					"type is not a reference");
 		return SOPHON_ERR_PARSE;
 	}
 
@@ -950,7 +956,7 @@ parser_pre_inc_dec (Sophon_VM *vm, Sophon_Bool dec, Sophon_Location *loc,
 					OP_anchor, anchor2,
 					OP_dup, 1, OP_dup, 1, OP_get,
 					OP_one, dec ? OP_sub : OP_add,
-					OP_put, OP_mov, 2, OP_pop, 2, -1);
+					OP_put, OP_pop, 1, -1);
 
 		APPEND(vm, &vout->expr.base_ops,
 					loc->first_line, OP_dup_ref, anchor1, -1);
@@ -970,7 +976,8 @@ parser_post_inc_dec (Sophon_VM *vm, Sophon_Bool dec, Sophon_Location *loc,
 	Sophon_ParserData *p = (Sophon_ParserData*)vm->parser_data;
 
 	if (!EXPR_IS_REF(&vin->expr)) {
-		parser_error(vm, PARSER_ERROR, loc, "type is not a reference");
+		sophon_parser_error(vm, SOPHON_PARSER_ERROR, loc,
+					"type is not a reference");
 		return SOPHON_ERR_PARSE;
 	}
 
@@ -1066,7 +1073,8 @@ parser_for_in (Sophon_VM *vm, Sophon_Location *loc,
 	Sophon_Int pn;
 
 	if (!EXPR_IS_REF(el)) {
-		parser_error(vm, PARSER_ERROR, loc, "type is not a reference");
+		sophon_parser_error(vm, SOPHON_PARSER_ERROR, loc,
+					"type is not a reference");
 		return SOPHON_ERR_PARSE;
 	}
 
@@ -1193,6 +1201,19 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 		case R_NULL:
 			sophon_value_set_null(vm, &v->v);
 			break;
+		case R_KEY_TO_ID: {
+			Sophon_String *str = NULL;
+
+#define KEY_TO_ID(name) case T_##name: str = vm->name##_str; break;
+			switch (T(0)) {
+				SOPHON_FOR_EACH_KEYWORD(KEY_TO_ID)
+				default:
+					SOPHON_ASSERT(0);
+			}
+
+			sophon_value_set_string(vm, &v->v, str);
+			break;
+		}
 		case R_EXPR_CONST: {
 			EXPR_INIT(&v->expr);
 
@@ -1387,7 +1408,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 			Sophon_ParserOpType type = V(1).i;
 
 			if (!EXPR_IS_REF(&V(0).expr)) {
-				parser_error(vm, PARSER_ERROR, &L(0),
+				sophon_parser_error(vm, SOPHON_PARSER_ERROR, &L(0),
 							"type is not a reference");
 				return SOPHON_ERR_PARSE;
 			}
@@ -1620,7 +1641,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 				}
 
 				if (!ok) {
-					parser_error(vm, PARSER_ERROR, &L(0),
+					sophon_parser_error(vm, SOPHON_PARSER_ERROR, &L(0),
 								"property has already been defined");
 					return SOPHON_ERR_PARSE;
 				}
@@ -1665,7 +1686,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 				}
 
 				if (!ok) {
-					parser_error(vm, PARSER_ERROR, &L(1),
+					sophon_parser_error(vm, SOPHON_PARSER_ERROR, &L(1),
 								"property has already been defined");
 					return SOPHON_ERR_PARSE;
 				}
@@ -1717,7 +1738,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 				}
 
 				if (!ok) {
-					parser_error(vm, PARSER_ERROR, &L(1),
+					sophon_parser_error(vm, SOPHON_PARSER_ERROR, &L(1),
 								"property has already been defined");
 					return SOPHON_ERR_PARSE;
 				}
@@ -1783,7 +1804,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 		}
 		case R_RETURN: {
 			if (FUNC(0)->func->flags & SOPHON_FUNC_FL_EVAL) {
-				parser_error(vm, PARSER_ERROR, &L(0),
+				sophon_parser_error(vm, SOPHON_PARSER_ERROR, &L(0),
 						"\"return\" is not in a function");
 				return SOPHON_ERR_PARSE;
 			}
@@ -1795,7 +1816,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 		}
 		case R_RETURN_VALUE: {
 			if (FUNC(0)->func->flags & SOPHON_FUNC_FL_EVAL) {
-				parser_error(vm, PARSER_ERROR, &L(0),
+				sophon_parser_error(vm, SOPHON_PARSER_ERROR, &L(0),
 						"\"return\" is not in a function");
 				return SOPHON_ERR_PARSE;
 			}
@@ -1817,7 +1838,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 				Sophon_U32 len;
 
 				if (sophon_string_new_utf8_cstr(vm, name, &buf, &len) >= 0) {
-					parser_error(vm, PARSER_ERROR, &L(0),
+					sophon_parser_error(vm, SOPHON_PARSER_ERROR, &L(0),
 								"\"%s\" cannot be a variant name",
 								buf);
 					sophon_string_free_utf8_cstr(vm, buf, len);
@@ -2006,7 +2027,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 			Sophon_ParserFrame *frame = FRAME(0);
 
 			if (FUNC(0)->func->flags & SOPHON_FUNC_FL_STRICT) {
-				parser_error(vm, PARSER_ERROR, &L(0),
+				sophon_parser_error(vm, SOPHON_PARSER_ERROR, &L(0),
 							"\"with\" cannot be used in strict mode");
 				return SOPHON_ERR_PARSE;
 			}
@@ -2162,7 +2183,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 			if (strict &&
 					((name == vm->arguments_str) || (name == vm->eval_str))) {
 				if (sophon_string_new_utf8_cstr(vm, name, &buf, &len) >= 0) {
-					parser_error(vm, PARSER_ERROR, &L(0),
+					sophon_parser_error(vm, SOPHON_PARSER_ERROR, &L(0),
 								"\"%s\" cannot be an argument name",
 								buf);
 					sophon_string_free_utf8_cstr(vm, buf, len);
@@ -2173,8 +2194,10 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 			r = sophon_function_add_var(vm, func, SOPHON_FUNC_ARG, name);
 			if (r == SOPHON_NONE) {		
 				if (sophon_string_new_utf8_cstr(vm, name, &buf, &len) >= 0) {
-					parser_error(vm,
-								strict ? PARSER_ERROR : PARSER_WARNING, &L(0),
+					sophon_parser_error(vm,
+								strict ? SOPHON_PARSER_ERROR :
+								SOPHON_PARSER_WARNING,
+								&L(0),
 								"argument \"%s\" has already been defined",
 								buf);
 					sophon_string_free_utf8_cstr(vm, buf, len);
@@ -2196,7 +2219,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 				Sophon_U32 len;
 
 				if (sophon_string_new_utf8_cstr(vm, name, &buf, &len) >= 0) {
-					parser_error(vm, PARSER_ERROR, &L(0),
+					sophon_parser_error(vm, SOPHON_PARSER_ERROR, &L(0),
 								"\"%s\" cannot be a function name",
 								buf);
 					sophon_string_free_utf8_cstr(vm, buf, len);
@@ -2376,7 +2399,6 @@ parse (Sophon_VM *vm)
 	Sophon_U16 sym;
 	Sophon_U16 edge;
 	Sophon_U16 eps;
-	Sophon_U16 identifier;
 	Sophon_U32 reduce;
 	Sophon_Result r;
 	Sophon_Bool error = SOPHON_FALSE;
@@ -2418,7 +2440,7 @@ next_state:
 		}
 
 		if (tok == SOPHON_ERR_LEX)
-			goto error;
+			goto real_error;
 
 		if (tok < 0) {
 			error = SOPHON_TRUE;
@@ -2463,7 +2485,6 @@ next_state:
 	/*State change*/
 	edge = js_state_shifts[top->s];
 	eps  = 0xFFFF;
-	identifier = 0xFFFF;
 
 	while (edge != 0xFFFF) {
 		sym = js_edge_symbol[edge];
@@ -2480,8 +2501,6 @@ next_state:
 			goto next_state;
 		} else if (sym == T_EPSILON) {
 			eps = js_edge_dest[edge];
-		} else if (sym == T_IDENTIFIER) {
-			identifier = js_edge_dest[edge];
 		} else if ((sym == T_REGEXP) &&
 				((curr->t == '/') || (curr->t == T_DIV_ASSIGN))) {
 			Sophon_Token t;
@@ -2494,25 +2513,6 @@ next_state:
 		}
 
 		edge = js_edge_next[edge];
-	}
-
-	if ((identifier != 0xFFFF) && ((curr->t == T_get) ||
-					(curr->t == T_set))) {
-		PUSH();
-
-		if (curr->t == T_get)
-			sophon_value_set_string(vm, &curr->v.v, vm->get_str);
-		else
-			sophon_value_set_string(vm, &curr->v.v, vm->set_str);
-
-		curr->t = T_IDENTIFIER;
-		curr->s = identifier;
-		*top = *curr;
-
-		curr->t = 0xFFFF;
-
-		DEBUG(("shift to state %d", curr->s));
-		goto next_state;
 	}
 
 	if (eps != 0xFFFF) {
@@ -2625,13 +2625,14 @@ error:
 		goto next_state;
 	}
 
+real_error:
 	/*Error*/
 	if (!error) {
 		error = SOPHON_TRUE;
 		p->flags |= SOPHON_PARSER_FL_ERROR;
 	}
 
-	parser_error(vm, PARSER_ERROR, &curr->l, NULL);
+	sophon_parser_error(vm, SOPHON_PARSER_ERROR, &curr->l, NULL);
 
 	if (tok != SOPHON_ERR_EOF) {
 		parser_clear_value(vm, curr->t, &curr->v);
@@ -2682,6 +2683,18 @@ accept:
 	}
 
 	return error ? (fatal ? tok : SOPHON_ERR_PARSE) : SOPHON_OK;
+}
+
+Sophon_Bool
+sophon_parser_strict_mode (Sophon_VM *vm)
+{
+	Sophon_ParserData *p;
+	
+	SOPHON_ASSERT(vm);
+
+	p = (Sophon_ParserData*)vm->parser_data;
+
+	return p->flags & SOPHON_PARSER_FL_STRICT;
 }
 
 Sophon_Result

@@ -137,7 +137,7 @@ static FUNCTION_FUNC(prototype_get)
 	Sophon_Value protov;
 	Sophon_Result r;
 
-	r = sophon_value_get(vm, thisv, SOPHON_VALUE_GC(vm->proto_str),
+	r = sophon_value_get(vm, thisv, SOPHON_VALUE_GC(vm->__proto_str),
 			&protov, SOPHON_FL_NONE|SOPHON_FL_OWN);
 
 	if (r == SOPHON_NONE) {
@@ -147,7 +147,7 @@ static FUNCTION_FUNC(prototype_get)
 		sophon_value_set_object(vm, &protov, obj);
 
 		sophon_value_define_prop(vm, thisv,
-				SOPHON_VALUE_GC(vm->proto_str),
+				SOPHON_VALUE_GC(vm->__proto_str),
 				protov, SOPHON_VALUE_UNDEFINED,
 				0,
 				SOPHON_FL_HAVE_VALUE|
@@ -172,7 +172,7 @@ static FUNCTION_FUNC(prototype_set)
 	Sophon_Value protov = SOPHON_ARG(0);
 
 	sophon_value_define_prop(vm, thisv,
-			SOPHON_VALUE_GC(vm->proto_str),
+			SOPHON_VALUE_GC(vm->__proto_str),
 			protov, SOPHON_VALUE_UNDEFINED,
 			0,
 			SOPHON_FL_HAVE_VALUE|

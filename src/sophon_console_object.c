@@ -43,7 +43,7 @@ enum {
 	CONSOLE_ASSERT
 };
 
-#define console_pr sophon_pr
+#define console_pr sophon_prerr
 
 #ifdef SOPHON_HAVE_TIME
 static Sophon_Int

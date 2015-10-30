@@ -76,7 +76,10 @@ extern "C" {
 	t(enum)\
 	t(await)\
 	t(get)\
-	t(set)
+	t(set)\
+	t(public)\
+	t(interface)\
+	t(implements)
 
 #ifdef __cplusplus
 }

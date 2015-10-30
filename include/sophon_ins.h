@@ -58,16 +58,23 @@ extern Sophon_Int  sophon_ins_dump (Sophon_VM *vm,
 					Sophon_Function *func,
 					Sophon_U8 *pi, Sophon_U32 len);
 
+/**\brief Dump instruction pointer*/
+#define SOPHON_INS_FL_IP   1
+/**\brief Dump line number*/
+#define SOPHON_INS_FL_LINE 2
+
 /**
  * \brief Dump all the instruction information to the output
  * \param[in] vm The current virtual machine
  * \param[in] func The function contains this instruction
  * \param[in] pi The instruction buffer
  * \param len The instruction buffer's length
+ * \param flags Dump flags
  */
 extern void        sophon_ins_dump_buffer (Sophon_VM *vm,
 					Sophon_Function *func,
-					Sophon_U8 *pi, Sophon_U32 len);
+					Sophon_U8 *pi, Sophon_U32 len,
+					Sophon_U32 flags);
 
 /**
  * \brief Run the instructions

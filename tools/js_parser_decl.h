@@ -165,6 +165,7 @@ extern "C" {
 	r(VAR_STATEMENT)\
 	r(DEBUGGER)\
 	r(FRAME_BEGIN)\
+	r(KEY_TO_ID)\
 	r(ACCEPT)
 
 #ifdef __cplusplus

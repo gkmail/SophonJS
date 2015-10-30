@@ -168,7 +168,7 @@ sophon_decl_load (Sophon_VM *vm, Sophon_Module *mod, Sophon_Object *obj,
 				break;
 		}
 
-		if (name == vm->call_str) {
+		if (name == vm->__call_str) {
 			obj->primv = getv;
 		} else {
 			sophon_value_define_prop(vm, SOPHON_VALUE_GC(obj),

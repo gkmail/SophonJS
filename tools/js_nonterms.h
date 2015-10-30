@@ -40,6 +40,9 @@ extern "C" {
 	n(JS,      ops)\
 	n(PROGRAM, ops)\
 	n(ID_OR_EMPTY, v)\
+	n(NAME,        v)\
+	n(PNAME,       v)\
+	n(MNAME,       v)\
 	n(FUNC_DECL,   ops)\
 	n(STATEMENT,   ops)\
 	n(STATEMENT_LIST, ops)\
@@ -75,6 +78,7 @@ extern "C" {
 	n(PROP_AND_VALUE_LIST_OR_EMPTY, expr)\
 	n(PROP_ASSIGN,    expr)\
 	n(PROP_NAME,      v)\
+	n(ALL_PROP_NAME,  v)\
 	n(FUNC_EXPR,      expr)\
 	n(MEMBER_EXPR,    expr)\
 	n(ARGUMENTS,      expr)\
