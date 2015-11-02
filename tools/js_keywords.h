@@ -76,10 +76,17 @@ extern "C" {
 	t(enum)\
 	t(await)\
 	t(get)\
-	t(set)\
+	t(set)
+
+#define FOR_EACH_FUTURE_KEYWORD(t)\
 	t(public)\
 	t(interface)\
-	t(implements)
+	t(implements)\
+	t(let)\
+	t(private)\
+	t(protected)\
+	t(package)\
+	t(static)
 
 #ifdef __cplusplus
 }

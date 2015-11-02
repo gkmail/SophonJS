@@ -41,6 +41,7 @@ extern "C" {
 #define FOR_EACH_INS(i)\
 	FOR_EACH_INS_OP(i)\
 	i(get_bind, Const, 1)\
+	i(get_bind_nt, Const, 1)\
 	i(put_bind, Const, 0)\
 	i(get_var, Const, 1)\
 	i(put_var, Const, 0)\

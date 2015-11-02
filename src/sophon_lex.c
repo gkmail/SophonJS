@@ -340,7 +340,7 @@ lex_get_str (Sophon_VM *vm, Sophon_TokenValue *val)
 {
 	Sophon_LexData *l = (Sophon_LexData*)vm->lex_data;
 	Sophon_Char end = l->tbuf[0];
-	Sophon_Char code;
+	Sophon_Int code;
 	Sophon_String *str;
 	Sophon_Int c, v;
 
@@ -359,10 +359,6 @@ lex_get_str (Sophon_VM *vm, Sophon_TokenValue *val)
 				return c;
 
 			switch(c) {
-				case '0':
-					l->tlen = len;
-					l->tbuf[len - 1] = 0;
-					break;
 				case 'b':
 					l->tlen = len;
 					l->tbuf[len - 1] = '\b';
@@ -429,8 +425,47 @@ lex_get_str (Sophon_VM *vm, Sophon_TokenValue *val)
 					l->tlen = len - 1;
 					break;
 				default:
+#define IS_OCT(c) (((c) >= '0') && ((c) <= '7'))
+#define TO_OCT(c) ((c) - '0')
+					if (IS_OCT(c)) {
+						Sophon_Int n = TO_OCT(c);
+
+						c = lex_getc(vm);
+						if (IS_OCT(c)) {
+							n *= 8;
+							n += TO_OCT(c);
+
+							if (n <= 3) {
+								c = lex_getc(vm);
+								if (IS_OCT(c)) {
+									n *= 8;
+									n += TO_OCT(c);
+								} else {
+									lex_unget(vm, c);
+								}
+							}
+						} else {
+							lex_unget(vm, c);
+						}
+
+						if (sophon_parser_strict_mode(vm)) {
+							lex_error(vm, SOPHON_PARSER_ERROR,
+									"octal escape string is forbidden "
+									"in strict mode");
+							return SOPHON_ERR_LEX;
+						}
+
+						l->tlen = len;
+						l->tbuf[len - 1] = n;
+						break;
+					}
+
 					l->tlen = len;
-					l->tbuf[len - 1] = c;
+					if (c == '0') {
+						l->tbuf[len - 1] = 0;
+					} else {
+						l->tbuf[len - 1] = c;
+					}
 					break;
 			}
 		} else if (c == end) {
@@ -689,6 +724,22 @@ lex_action (Sophon_VM *vm, Sophon_U16 action, Sophon_TokenValue *val)
 			l->flags |= SOPHON_LEX_FL_LAST_LT;
 			DEBUG(("line terminator"));
 			break;
+		case A_BIN_NUM:
+			text = lex_text(vm);
+			if (!text)
+				return SOPHON_ERR_NOMEM;
+
+			r = lex_get_num(vm, text + 2, 2, &val->v);
+			if (r < 0)
+				return r;
+
+			return T_NUMBER;
+		case A_OCT_NUM_EXT:
+			if (sophon_parser_strict_mode(vm)) {
+				lex_error(vm, SOPHON_PARSER_ERROR,
+							"octal number is forbidden in strict mode");
+				return SOPHON_ERR_LEX;
+			}
 		case A_OCT_NUM:
 			text = lex_text(vm);
 			if (!text)
@@ -758,6 +809,21 @@ lex_action (Sophon_VM *vm, Sophon_U16 action, Sophon_TokenValue *val)
 				t = lex_get_id(vm, val, SOPHON_TRUE);
 				if (t != 0)
 					return t;
+			}
+
+			if ((action >= A_FUTURE_KEYWORD_BEGIN) &&
+						(action < A_KEYWORD_END) &&
+						!sophon_parser_strict_mode(vm)) {
+				Sophon_String *str;
+
+				if (!(str = sophon_string_from_chars(vm, l->tbuf, l->tlen)))
+					return SOPHON_ERR_NOMEM;
+
+				if (!(str = sophon_string_intern(vm, str)))
+					return SOPHON_ERR_NOMEM;
+
+				sophon_value_set_gc(vm, &val->v, str);
+				return T_IDENTIFIER;
 			}
 
 			/*Real keyword*/

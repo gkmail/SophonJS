@@ -52,6 +52,9 @@
 #define DEBUG(a)
 #endif
 
+#define FUNC_FL_BEGIN      0x10
+#define FUNC_FL_NO_STRICT  0x20
+
 #define EXPR_IS_BIND(e)    (!SOPHON_VALUE_IS_UNDEFINED((e)->bind_namev))
 #define EXPR_IS_REF(e)     (EXPR_IS_BIND(e) || ((e)->name_ops))
 #define EXPR_INIT(e)       parser_expr_init(e)
@@ -497,6 +500,7 @@ parser_append_ops (Sophon_VM *vm, Sophon_ParserOp **ops, Sophon_U32 line, ...)
 						sophon_fatal("too many constants");
 
 					bind->name_id = id;
+					bind->flags   = 0;
 					op = (Sophon_ParserOp*)bind;
 					break;
 				}
@@ -1661,7 +1665,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 		}
 		case R_PROP_GET_BEGIN: {
 			parser_push_func(vm, NULL);
-			p->flags |= SOPHON_PARSER_FL_FUNC_BEGIN;
+			FUNC(0)->func->flags |= FUNC_FL_BEGIN;
 			break;
 		}
 		case R_PROP_GET: {
@@ -1713,7 +1717,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 			func = FUNC(0)->func;
 			str = (Sophon_String*)SOPHON_VALUE_GET_GC(V(3).v);
 			sophon_function_add_var(vm, func, SOPHON_FUNC_ARG, str);
-			p->flags |= SOPHON_PARSER_FL_FUNC_BEGIN;
+			FUNC(0)->func->flags |= FUNC_FL_BEGIN;
 			break;
 		}
 		case R_PROP_SET: {
@@ -2028,7 +2032,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 
 			if (FUNC(0)->func->flags & SOPHON_FUNC_FL_STRICT) {
 				sophon_parser_error(vm, SOPHON_PARSER_ERROR, &L(0),
-							"\"with\" cannot be used in strict mode");
+							"\"with\" is forbidden in strict mode");
 				return SOPHON_ERR_PARSE;
 			}
 
@@ -2154,6 +2158,20 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 			*v = V(1);
 			break;
 		}
+		case R_TYPEOF: {
+			Sophon_ParserOp *op;
+
+			EXPR_TO_VALUE(&V(1).expr);
+			op = V(1).expr.base_ops->prev;
+			if (op->type == OP_get_bind) {
+				Sophon_ParserBind *bind = (Sophon_ParserBind*)op;
+				bind->flags |= SOPHON_PARSER_BIND_NOT_THROW;
+			}
+			APPEND(vm, &V(1).expr.base_ops, L(0).first_line,
+						OP_typeof, -1);
+			*v = V(1);
+			break;
+		}
 		case R_LABEL: {
 			Sophon_Int id;
 
@@ -2231,7 +2249,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 			break;
 		}
 		case R_FUNC_BODY: {
-			p->flags |= SOPHON_PARSER_FL_FUNC_BEGIN;
+			FUNC(0)->func->flags |= FUNC_FL_BEGIN;
 			break;
 		}
 		case R_FUNC_DECL: {
@@ -2304,7 +2322,6 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 			*v = V(1);\
 			break;\
 		}
-		UNARY_REDUCE_OP(TYPEOF, typeof)
 		UNARY_REDUCE_OP(POSITIVE, to_num)
 		UNARY_REDUCE_OP(NEG, neg)
 		UNARY_REDUCE_OP(NOT, not)
@@ -2469,17 +2486,20 @@ next_state:
 	}
 
 	/*Strict mode flag check*/
-	if (p->flags & SOPHON_PARSER_FL_FUNC_BEGIN) {
+	if (FUNC(0)->func->flags & FUNC_FL_BEGIN) {
 		if (!(FUNC(0)->func->flags & SOPHON_FUNC_FL_STRICT)) {
 			if (curr->t == T_STRING) {
 				Sophon_String *str = GET_STRING(curr->v.v);
 
 				if (!sophon_string_cmp(vm, str, vm->use_strict_str)) {
 					FUNC(0)->func->flags |= SOPHON_FUNC_FL_STRICT;
+					FUNC(0)->func->flags &= ~FUNC_FL_BEGIN;
 				}
 			}
 		}
-		p->flags &= ~SOPHON_PARSER_FL_FUNC_BEGIN;
+
+		if (curr->t != T_STRING)
+			FUNC(0)->func->flags &= ~FUNC_FL_BEGIN;
 	}
 
 	/*State change*/
@@ -2694,7 +2714,7 @@ sophon_parser_strict_mode (Sophon_VM *vm)
 
 	p = (Sophon_ParserData*)vm->parser_data;
 
-	return p->flags & SOPHON_PARSER_FL_STRICT;
+	return FUNC(0)->func->flags & SOPHON_FUNC_FL_STRICT;
 }
 
 Sophon_Result
@@ -2721,7 +2741,6 @@ sophon_parse (Sophon_VM *vm, Sophon_Module *mod, Sophon_Encoding enc,
 	p->module = mod;
 	p->flags = flags & (SOPHON_PARSER_FL_EVAL|SOPHON_PARSER_FL_STRICT|\
 				SOPHON_PARSER_FL_SHELL|SOPHON_PARSER_FL_NO_WARNING);
-	p->flags |= SOPHON_PARSER_FL_FUNC_BEGIN;
 
 	/*Add a new function*/
 	if (flags & SOPHON_PARSER_FL_BODY) {
@@ -2752,6 +2771,8 @@ sophon_parse (Sophon_VM *vm, Sophon_Module *mod, Sophon_Encoding enc,
 	p->func_stack[0].frame_bottom = 0;
 	p->func_top  = 1;
 	p->frame_top = 0;
+
+	func->flags |= FUNC_FL_BEGIN;
 
 	/*Add a new closure*/
 	clos = sophon_closure_create(vm, func);

@@ -53,10 +53,8 @@ extern "C" {
 #define SOPHON_PARSER_FL_EOF            32
 /**\brief Parse error*/
 #define SOPHON_PARSER_FL_ERROR          64
-/**\brief Function begin*/
-#define SOPHON_PARSER_FL_FUNC_BEGIN     128
 /**\brief Disable warning message*/
-#define SOPHON_PARSER_FL_NO_WARNING     256
+#define SOPHON_PARSER_FL_NO_WARNING     128
 
 #define sophon_parser_init(vm)  ((vm)->parser_data = NULL)
 #define sophon_parser_deinit(vm)

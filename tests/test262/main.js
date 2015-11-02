@@ -11,6 +11,16 @@ function myRunTest(test)
 {
 	var myTestException = undefined;
 
+	if (test.path == "TestCases/ch07/7.8/7.8.4/7.8.4-1-s.js")
+		return;
+
+	if (test.path == "TestCases/ch07/7.8/7.8.4/7.8.4-10-s.js")
+		return;
+
+	if (test.path == "TestCases/ch07/7.8/7.8.4/7.8.4-11-s.js")
+		return;
+
+
 	try {
 		eval("function myTestCase(){"+test.code+"};myTestCase()");
 	} catch (e) {

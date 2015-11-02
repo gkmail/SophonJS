@@ -46,8 +46,10 @@ extern "C" {
 #define FOR_EACH_ACTION(a)\
 	a(CHAR)\
 	a(OCT_NUM)\
+	a(OCT_NUM_EXT)\
 	a(DEC_NUM)\
 	a(HEX_NUM)\
+	a(BIN_NUM)\
 	a(DOUBLE)\
 	a(COMMENT_LINE_BEGIN)\
 	a(COMMENT_BLOCK_BEGIN)\

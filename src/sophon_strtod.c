@@ -88,24 +88,33 @@ sophon_strtod (const Sophon_Char *str, Sophon_Char **end,
 		sign = SOPHON_FALSE;
 	}
 
-	real_base = 10;
-	if (base == 16) {
-		if ((*c == '0') && ((c[1] == 'x') || (c[1] == 'X'))) {
-			c += 2;
-		}
-		real_base = 16;
-	}else if (base == SOPHON_BASE_INT) {
-		if ((*c == '0') && ((c[1] == 'x') || (c[1] == 'X'))) {
-			c += 2;
-			real_base = 16;
-		} else if (*c == '0') {
+	real_base = base > 0 ? base : 10;
+
+	if (*c == '0') {
+		if ((c[1] == 'x') || (c[1] == 'X')) {
+			if ((base == SOPHON_BASE_INT) ||
+						(base == SOPHON_BASE_INT_FLOAT) ||
+						(base == 16)) {
+				c += 2;
+				real_base = 16;
+			}
+		} else if ((c[1] == 'b') || (c[1] == 'B')) {
+			if ((base == SOPHON_BASE_INT) ||
+						(base == SOPHON_BASE_INT_FLOAT) ||
+						(base == 2)) {
+				c += 2;
+				real_base = 2;
+			}
+		} else if ((c[1] == 'o') || (c[1] == 'O')) {
+			if ((base == SOPHON_BASE_INT) ||
+						(base == SOPHON_BASE_INT_FLOAT) ||
+						(base == 8)) {
+				c += 2;
+				real_base = 8;
+			}
+		} else if ((base == 8) || (base == SOPHON_BASE_INT)) {
 			real_base = 8;
-		}
-	} else if (base == SOPHON_BASE_INT_FLOAT) {
-		if ((*c == '0') && ((c[1] == 'x') || (c[1] == 'X'))) {
-			c += 2;
-			real_base = 16;
-		} else if (*c == '0') {
+		} else if (base == SOPHON_BASE_INT_FLOAT) {
 			const Sophon_Char *nc = c + 1;
 			Sophon_Bool oct = SOPHON_TRUE;
 
@@ -125,8 +134,6 @@ sophon_strtod (const Sophon_Char *str, Sophon_Char **end,
 			if (oct)
 				real_base = 8;
 		}
-	} else if (base != SOPHON_BASE_FLOAT) {
-		real_base = base;
 	}
 
 	n = char_val(*c);

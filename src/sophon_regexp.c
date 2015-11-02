@@ -452,10 +452,6 @@ parse_term (Sophon_VM *vm, ReInput *inp, ReNode **root)
 					if (sophon_isdigit(ch)) {
 						unget(inp, ch);
 						ch = parse_num(vm, inp);
-						if (ch > inp->cap_end) {
-							return SOPHON_ERR_PARSE;
-						}
-
 						node = add_node(vm, inp, N_REF);
 						node->n.ref = ch;
 					} else {
@@ -1387,8 +1383,12 @@ retry:
 				Sophon_Char *ref;
 				Sophon_U32 len;
 
-				ref = mbuf[pi->i.ref].begin;
-				len = ref ? mbuf[pi->i.ref].end - ref : 0;
+				if (pi->i.ref < ctxt->cap_count) {
+					ref = mbuf[pi->i.ref].begin;
+					len = ref ? mbuf[pi->i.ref].end - ref : 0;
+				} else {
+					len = 0;
+				}
 
 				if (len) {
 					if (ctxt->flags & SOPHON_REGEXP_FL_I) {

@@ -81,9 +81,6 @@ sophon_decl_global_frame_create (Sophon_VM *vm, Sophon_U8 gc_type,
 
 	SOPHON_GC_HEADER_INIT((Sophon_GCObject*)frame, gc_type);
 
-	if (sophon_value_is_null(thisv) || sophon_value_is_undefined(thisv))
-		thisv = vm->glob_module->globv;
-
 	frame->func    = func;
 	frame->callerv = callerv;
 	frame->calleev = calleev;

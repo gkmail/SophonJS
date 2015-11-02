@@ -443,8 +443,7 @@ sophon_stack_get_binding (Sophon_VM *vm, Sophon_String *name,
 		frame = frame->bottom;
 	}
 
-	sophon_throw(vm, vm->ReferenceError, "binding has not been defined");
-	return SOPHON_ERR_THROW;
+	return SOPHON_NONE;
 }
 
 Sophon_Result

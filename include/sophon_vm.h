@@ -111,7 +111,12 @@ extern "C" {
 	s(if)\
 	s(throw)\
 	s(delete)\
-	s(implements)
+	s(implements)\
+	s(let)\
+	s(private)\
+	s(protected)\
+	s(package)\
+	s(static)
 
 #define SOPHON_FOR_EACH_STRING(s)\
 	s(Object)\

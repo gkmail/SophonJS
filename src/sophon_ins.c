@@ -450,7 +450,11 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 	Sophon_String *str = sophon_value_typeof(vm, STACK(0));\
 	sophon_value_set_gc(vm, &STACK(0), (Sophon_GCObject*)str);
 #define I_this_run\
-	STACK(-1) = VAR_ENV->thisv;
+	if (sophon_value_is_null(VAR_ENV->thisv) ||\
+				sophon_value_is_undefined(VAR_ENV->thisv))\
+		STACK(-1) = vm->glob_module->globv;\
+	else\
+		STACK(-1) = VAR_ENV->thisv;
 #define I_const_run\
 	STACK(-1) = CONST(id);
 #define I_closure_run\
@@ -463,7 +467,8 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 		THROW;\
 	}
 #define I_put_run\
-	if (sophon_value_put(vm, STACK(2), STACK(1), STACK(0), SOPHON_FL_THROW)\
+	if (sophon_value_put(vm, STACK(2), STACK(1), STACK(0),\
+					sophon_strict(vm) ? SOPHON_FL_THROW : 0)\
 				!= SOPHON_OK) {\
 		THROW;\
 	}
@@ -598,7 +603,19 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 #define I_debugger_run
 #define I_get_bind_run\
 	Sophon_String *name = SOPHON_VALUE_GET_STRING(CONST(id));\
-	if (sophon_stack_get_binding(vm, name, &STACK(-1)) != SOPHON_OK) {\
+	r = sophon_stack_get_binding(vm, name, &STACK(-1));\
+	if (r == SOPHON_NONE) {\
+		sophon_throw(vm, vm->ReferenceError, "binding has not been defined");\
+		THROW;\
+	} else if (r != SOPHON_OK) {\
+		THROW;\
+	}
+#define I_get_bind_nt_run\
+	Sophon_String *name = SOPHON_VALUE_GET_STRING(CONST(id));\
+	r = sophon_stack_get_binding(vm, name, &STACK(-1));\
+	if (r == SOPHON_NONE) {\
+		sophon_value_set_undefined(vm, &STACK(-1));\
+	} else if (r != SOPHON_OK) {\
 		THROW;\
 	}
 #define I_put_bind_run\

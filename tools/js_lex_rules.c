@@ -32,8 +32,10 @@
 add_rule(C_BEGIN, "[\\x09\\x0B\\x0C\\u0020\\u00a0\\u1680\\u180e\\u2000-\\u200a\\u202f\\u205f\\u3000\\uFEFF]+", A_NONE);
 add_rule(C_BEGIN, "\\r\\n", A_LINE_TERM);
 add_rule(C_BEGIN, "[\\r\\n\\u2028\\u2029]", A_LINE_TERM);
-add_rule(C_BEGIN, "0[0-7]+", A_OCT_NUM);
+add_rule(C_BEGIN, "0[0-7]+", A_OCT_NUM_EXT);
 add_rule(C_BEGIN, "0[xX][[:xdigit:]]+", A_HEX_NUM);
+add_rule(C_BEGIN, "0[oO][[0-7]]+", A_OCT_NUM);
+add_rule(C_BEGIN, "0[bB][[01]]+", A_BIN_NUM);
 add_rule(C_BEGIN, "[[:digit:]]+", A_DEC_NUM);
 add_rule(C_BEGIN, "[[:digit:]]+\".\"?[[:digit:]]*([eE][\\+\\-]?[[:digit:]]+)?", A_DOUBLE);
 add_rule(C_BEGIN, "\".\"[[:digit:]]+([eE][\\+\\-]?[[:digit:]]+)?", A_DOUBLE);

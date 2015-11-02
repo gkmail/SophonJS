@@ -44,6 +44,7 @@ enum {
 	T_BEGIN = 255,
 #define DECL_KEYWORD_ENUM_ITEM(name)    T_##name,
 	FOR_EACH_KEYWORD(DECL_KEYWORD_ENUM_ITEM)
+	FOR_EACH_FUTURE_KEYWORD(DECL_KEYWORD_ENUM_ITEM)
 #define DECL_PUNCT_ENUM_ITEM(name, str) T_##name,
 	FOR_EACH_PUNCT(DECL_PUNCT_ENUM_ITEM)
 #define DECL_TERM_ENUM_ITEM(name, field) T_##name,
@@ -130,6 +131,7 @@ dump_js_parser_h (void)
 
 #define DUMP_KEYWORD(name)    printf("\tT_%s,\t/* %d */\n", #name, i++);
 	FOR_EACH_KEYWORD(DUMP_KEYWORD)
+	FOR_EACH_FUTURE_KEYWORD(DUMP_KEYWORD)
 
 #define DUMP_PUNCT(name, str) printf("\tT_%s,\t/* %d */\n", #name, i++);
 	FOR_EACH_PUNCT(DUMP_PUNCT)
@@ -174,6 +176,7 @@ dump_js_parser_c (void)
 	printf("static const char* js_token_names[] = {\n");
 #define DUMP_KEYWORD_NAME(name)    printf("\t\"%s\",\n", #name);
 	FOR_EACH_KEYWORD(DUMP_KEYWORD_NAME)
+	FOR_EACH_FUTURE_KEYWORD(DUMP_KEYWORD_NAME)
 
 #define DUMP_PUNCT_NAME(name, str) printf("\t\"%s\",\n", #str);
 	FOR_EACH_PUNCT(DUMP_PUNCT_NAME)

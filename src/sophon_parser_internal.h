@@ -251,10 +251,13 @@ struct Sophon_ParserLongJump_s {
 	Sophon_U16           sp;
 };
 
+#define SOPHON_PARSER_BIND_NOT_THROW 1
+
 struct Sophon_ParserBind_s {
 	Sophon_ParserOp      op;
 	Sophon_U16           name_id;
 	Sophon_U16           var_id;
+	Sophon_U16           flags;
 };
 
 #define PROP_DEFINE_DATA 1

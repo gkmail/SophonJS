@@ -48,6 +48,7 @@ enum {
 	A_NONE,
 #define DECL_KEYWORD_ENUM_ITEM(name)    A_##name,
 	FOR_EACH_KEYWORD(DECL_KEYWORD_ENUM_ITEM)
+	FOR_EACH_FUTURE_KEYWORD(DECL_KEYWORD_ENUM_ITEM)
 #define DECL_PUNCT_ENUM_ITEM(name, str) A_##name,
 	FOR_EACH_PUNCT(DECL_PUNCT_ENUM_ITEM)
 #define DECL_ACTION_ENUM_ITEM(name)       A_##name,
@@ -69,6 +70,7 @@ build_js_lex (void)
 #define KEYWORD_RULE(t)       add_rule(C_BEGIN, "\"" #t "\"", A_##t);
 
 	FOR_EACH_KEYWORD(KEYWORD_RULE)
+	FOR_EACH_FUTURE_KEYWORD(KEYWORD_RULE)
 
 #define PUNCT_RULE(name, str) add_rule(C_BEGIN, "\"" #str "\"", A_##name);
 
@@ -98,6 +100,7 @@ dump_terms (void)
 {
 	int i = 0;
 	int kw_end;
+	int future_begin;
 
 	printf("typedef enum {\n");
 
@@ -107,6 +110,10 @@ dump_terms (void)
 	printf("\tA_%s, /* %d */\n", #name, i++);\
 
 	FOR_EACH_KEYWORD(DUMP_KEYWORD_NAME)
+	future_begin = i;
+
+	FOR_EACH_FUTURE_KEYWORD(DUMP_KEYWORD_NAME)
+
 	kw_end = i;
 
 #define DUMP_PUNCT_NAME(name, str) \
@@ -122,6 +129,7 @@ dump_terms (void)
 	printf("\tA_COUNT /* %d */\n", i++);
 	printf("} LexActionType;\n");
 
+	printf("#define A_FUTURE_KEYWORD_BEGIN %d\n", future_begin);
 	printf("#define A_KEYWORD_END %d\n", kw_end);
 }
 

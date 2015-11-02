@@ -88,6 +88,11 @@ add_rule(N_PNAME, T_if, R_KEY_TO_ID);
 add_rule(N_PNAME, T_throw, R_KEY_TO_ID);
 add_rule(N_PNAME, T_delete, R_KEY_TO_ID);
 add_rule(N_PNAME, T_implements, R_KEY_TO_ID);
+add_rule(N_PNAME, T_let, R_KEY_TO_ID);
+add_rule(N_PNAME, T_private, R_KEY_TO_ID);
+add_rule(N_PNAME, T_protected, R_KEY_TO_ID);
+add_rule(N_PNAME, T_package, R_KEY_TO_ID);
+add_rule(N_PNAME, T_static, R_KEY_TO_ID);
 
 add_rule(N_MNAME, N_PNAME, R_COPY_0);
 add_rule(N_MNAME, T_get, R_KEY_TO_ID);

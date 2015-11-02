@@ -380,7 +380,15 @@ calc_end:
 						Sophon_Bool put = (op->type == OP_put_bind);
 
 						if (bind->var_id == 0xFFFF) {
-							*pi++ = put ? I_put_bind : I_get_bind;
+							if (put) {
+								*pi = I_put_bind;
+							} else if (bind->flags &
+										SOPHON_PARSER_BIND_NOT_THROW) {
+								*pi = I_get_bind_nt;
+							} else {
+								*pi = I_get_bind;
+							}
+							pi++;
 							*pi++ = bind->name_id >> 8;
 							*pi++ = bind->name_id & 0xFF;
 						} else {
