@@ -47,11 +47,12 @@ extern "C" {
 #define sophon_mm_deinit(vm)
 
 #ifdef SOPHON_MM_DEBUG
-extern void       sophon_mm_dump_unfreed (void);
+extern void       sophon_mm_dump_unfreed (Sophon_VM *vm);
 
-extern void       sophon_mm_check_ptr (Sophon_Ptr ptr, Sophon_U32 size);
+extern void       sophon_mm_check_ptr (Sophon_VM *vm, Sophon_Ptr ptr,
+						Sophon_U32 size);
 
-extern void       sophon_mm_check_all (void);
+extern void       sophon_mm_check_all (Sophon_VM *vm);
 
 extern Sophon_Ptr sophon_mm_realloc_real (Sophon_VM *vm, Sophon_Ptr old_ptr,
 						Sophon_U32 old_size, Sophon_U32 new_size,

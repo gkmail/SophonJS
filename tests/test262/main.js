@@ -11,23 +11,10 @@ function myRunTest(test)
 {
 	var myTestException = undefined;
 
-	if (test.path == "TestCases/ch07/7.8/7.8.4/7.8.4-1-s.js")
-		return;
+	myTestException = runTest(test.code);
 
-	if (test.path == "TestCases/ch07/7.8/7.8.4/7.8.4-10-s.js")
-		return;
-
-	if (test.path == "TestCases/ch07/7.8/7.8.4/7.8.4-11-s.js")
-		return;
-
-
-	try {
-		eval("function myTestCase(){"+test.code+"};myTestCase()");
-	} catch (e) {
-		myTestException = e;
-	}
-
-	console.log("TEST: %s", test.description);
+	console.log("TEST:%s", test.path);
+	console.log("%s", test.description);
 
 	var fail = false;
 
@@ -56,6 +43,7 @@ function myRunTest(test)
 		console.log("PASSED");
 	}
 
-	if (fail)
+	if (fail) {
 		throw Error("test failed");
+	}
 }

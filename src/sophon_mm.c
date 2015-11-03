@@ -78,7 +78,7 @@ typedef struct {
 static MMHead mm_used = {&mm_used, &mm_used};
 
 void
-sophon_mm_dump_unfreed ()
+sophon_mm_dump_unfreed (Sophon_VM *vm)
 {
 	MMHead *m;
 
@@ -105,7 +105,7 @@ sophon_mm_dump_unfreed ()
 }
 
 void
-sophon_mm_check_all ()
+sophon_mm_check_all (Sophon_VM *vm)
 {
 	MMHead *m;
 	Sophon_Bool err = SOPHON_FALSE;
@@ -135,7 +135,7 @@ sophon_mm_check_all ()
 }
 
 void
-sophon_mm_check_ptr (Sophon_Ptr ptr, Sophon_U32 size)
+sophon_mm_check_ptr (Sophon_VM *vm, Sophon_Ptr ptr, Sophon_U32 size)
 {
 	MMHead *head = ((MMHead*)ptr) - 1;
 	MMTail *tail = (MMTail*)(((char*)ptr) + size);

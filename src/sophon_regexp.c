@@ -234,8 +234,63 @@ hex_val (Sophon_Char ch)
 }
 
 static Sophon_Int
+parse_uc (Sophon_VM *vm, ReInput *inp)
+{
+	Sophon_Int n = 0, ch;
+	Sophon_U32 pos = inp->pos;
+
+	ch = getch(inp);
+	if (ch == '{') {
+		ch = getch(inp);
+		if (!sophon_isxdigit(ch))
+			goto fail;
+
+		while (1) {
+			n <<= 4;
+			n |= hex_val(ch);
+
+			ch = getch(inp);
+			if (ch == '}')
+				break;
+
+			if (!sophon_isxdigit(ch))
+				goto fail;
+		}
+	} else {
+		ch = getch(inp);
+		if (!sophon_isxdigit(ch))
+			goto fail;
+		n = hex_val(ch);
+
+		ch = getch(inp);
+		if (!sophon_isxdigit(ch))
+			goto fail;
+		n <<= 4;
+		n |= hex_val(ch);
+
+		ch = getch(inp);
+		if (!sophon_isxdigit(ch))
+			goto fail;
+		n <<= 4;
+		n |= hex_val(ch);
+
+		ch = getch(inp);
+		if (!sophon_isxdigit(ch))
+			goto fail;
+		n <<= 4;
+		n |= hex_val(ch);
+	}
+
+	return n;
+fail:
+	inp->pos = pos;
+	return 'u';
+}
+
+static Sophon_Int
 parse_escape (Sophon_VM *vm, ReInput *inp, Sophon_Int ch)
 {
+	Sophon_Int c1, c2;
 	Sophon_Int n;
 
 	switch (ch) {
@@ -263,36 +318,28 @@ parse_escape (Sophon_VM *vm, ReInput *inp, Sophon_Int ch)
 			return '\v';
 		case 'c':
 			ch = getch(inp);
-			if (!sophon_isalpha(ch))
-				return SOPHON_ERR_PARSE;
+			if (!sophon_isalpha(ch)) {
+				unget(inp, ch);
+				return 'c';
+			}
 			return ch % 32;
 		case 'u':
-			ch = getch(inp);
-			if (!sophon_isxdigit(ch))
-				return SOPHON_ERR_PARSE;
-			n = (hex_val(ch) << 12);
-			ch = getch(inp);
-			if (!sophon_isxdigit(ch))
-				return SOPHON_ERR_PARSE;
-			n |= (hex_val(ch) << 8);
-			ch = getch(inp);
-			if (!sophon_isxdigit(ch))
-				return SOPHON_ERR_PARSE;
-			n |= (hex_val(ch) << 4);
-			ch = getch(inp);
-			if (!sophon_isxdigit(ch))
-				return SOPHON_ERR_PARSE;
-			n |= hex_val(ch);
-			return n;
+			return parse_uc(vm, inp);
 		case 'x':
-			ch = getch(inp);
-			if (!sophon_isxdigit(ch))
-				return SOPHON_ERR_PARSE;
-			n = hex_val(ch) << 4;
-			ch = getch(inp);
-			if (!sophon_isxdigit(ch))
-				return SOPHON_ERR_PARSE;
-			n |= hex_val(ch);
+			c1 = getch(inp);
+			if (!sophon_isxdigit(c1)) {
+				unget(inp, c1);
+				return 'x';
+			}
+			n = hex_val(c1);
+			c2 = getch(inp);
+			if (!sophon_isxdigit(c2)) {
+				unget(inp, c2);
+				unget(inp, c1);
+				return 'x';
+			}
+			n <<= 4;
+			n |= hex_val(c2);
 			return n;
 		default:
 			return ch;

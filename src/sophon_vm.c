@@ -150,7 +150,7 @@ sophon_vm_destroy(Sophon_VM *vm)
 				vm->mm_curr_used));
 
 #ifdef SOPHON_MM_DEBUG
-	sophon_mm_dump_unfreed();
+	sophon_mm_dump_unfreed(vm);
 #endif
 
 	ptr = sophon_realloc(vm, 0);

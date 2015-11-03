@@ -925,7 +925,7 @@ sophon_value_for_in (Sophon_VM *vm, Sophon_U16 end_ip)
 			goto end;
 
 		sophon_array_for_each(arr, id, item) {
-			stk->v[stk->sp - 1] = item;
+			sophon_value_set_int(vm, &stk->v[stk->sp - 1], id);
 
 			stk->ip = iter.cont_ip;
 			r = sophon_ins_run(vm);

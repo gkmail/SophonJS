@@ -73,6 +73,12 @@ enum {
 extern Sophon_Bool  sophon_parser_strict_mode (Sophon_VM *vm);
 
 /**
+ * \brief Set octal extension flag
+ * \param[in] vm The current virtual machine
+ */
+extern void         sophon_parser_octal_ext (Sophon_VM *vm);
+
+/**
  * \brief Parse the input
  * \param[in] vm The current virtual machine
  * \param[in] mod The module to hold the generated code
