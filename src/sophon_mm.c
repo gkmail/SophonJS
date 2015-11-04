@@ -75,19 +75,19 @@ typedef struct {
 	Sophon_U32  magic;
 } MMTail;
 
-static MMHead mm_used = {&mm_used, &mm_used};
-
 void
 sophon_mm_dump_unfreed (Sophon_VM *vm)
 {
 	MMHead *m;
+	MMHead **phead = (MMHead**)&vm->mm_dbg_data;
 
-	if (mm_used.next == &mm_used)
+	if (!*phead)
 		return;
 
 	sophon_prerr("unfreed buffers:\n");
 
-	for (m = mm_used.next; m != &mm_used; m = m->next) {
+	m = *phead;
+	do {
 		Sophon_U8 *buf = (Sophon_U8*)(m + 1);
 		Sophon_Int i;
 
@@ -101,16 +101,19 @@ sophon_mm_dump_unfreed (Sophon_VM *vm)
 		}
 
 		sophon_prerr("]\n");
-	}
+		m = m->next;
+	} while (m != *phead);
 }
 
 void
 sophon_mm_check_all (Sophon_VM *vm)
 {
+	MMHead **phead = (MMHead**)&vm->mm_dbg_data;
 	MMHead *m;
 	Sophon_Bool err = SOPHON_FALSE;
 
-	for (m = mm_used.next; m != &mm_used; m = m->next) {
+	m = *phead;
+	do {
 		Sophon_U8 *buf = (Sophon_U8*)(m + 1);
 		MMTail *t = (MMTail*)(buf + m->size);
 		Sophon_Int i;
@@ -128,7 +131,9 @@ sophon_mm_check_all (Sophon_VM *vm)
 			sophon_prerr("\t\thead: %08x tail: %08x\n", m->magic, t->magic);
 			err = SOPHON_TRUE;
 		}
-	}
+
+		m = m->next;
+	} while (m != *phead);
 
 	if (err)
 		sophon_fatal("memory write overflow");
@@ -165,6 +170,7 @@ sophon_mm_realloc_real (Sophon_VM *vm, Sophon_Ptr old_ptr, Sophon_U32 old_size,
 	}
 
 	if (old_ptr) {
+		MMHead **phead = (MMHead**)&vm->mm_dbg_data;
 		MMHead *head = ((MMHead*)old_ptr) - 1;
 		MMTail *tail = (MMTail*)(((char*)old_ptr) + old_size);
 
@@ -182,6 +188,13 @@ sophon_mm_realloc_real (Sophon_VM *vm, Sophon_Ptr old_ptr, Sophon_U32 old_size,
 						old_ptr, head->size, old_size);
 		}
 
+		if (*phead == head) {
+			if (head->next == head)
+				*phead = NULL;
+			else
+				*phead = head->next;
+		}
+
 		head->prev->next = head->next;
 		head->next->prev = head->prev;
 		head->magic = 0;
@@ -193,13 +206,20 @@ sophon_mm_realloc_real (Sophon_VM *vm, Sophon_Ptr old_ptr, Sophon_U32 old_size,
 	ptr = mm_realloc(vm, old_ptr, real_old_size, real_new_size);
 
 	if (ptr && new_size) {
+		MMHead **phead = (MMHead**)&vm->mm_dbg_data;
 		MMHead *head = (MMHead*)ptr;
 		MMTail *tail = (MMTail*)(((char*)(head + 1)) + new_size);
 
-		head->prev = mm_used.prev;
-		head->next = &mm_used;
-		mm_used.prev->next = head;
-		mm_used.prev = head;
+		if (*phead) {
+			head->prev = (*phead)->prev;
+			head->next = (*phead);
+			(*phead)->prev->next = head;
+			(*phead)->prev = head;
+		} else {
+			*phead = head;
+			head->prev = head;
+			head->next = head;
+		}
 
 		head->file  = file;
 		head->line  = line;

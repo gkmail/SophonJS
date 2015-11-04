@@ -46,7 +46,7 @@
 #include "sophon_js_parser.h"
 #include "sophon_js_parser.c"
 
-#if 0
+#if 1
 #define DEBUG(a) SOPHON_INFO(a)
 #else
 #define DEBUG(a)
@@ -2460,8 +2460,6 @@ next_state:
 			goto accept;
 		}
 
-		p->flags &= ~SOPHON_PARSER_FL_AUTO_SEMICOLON;
-
 		/*Clear new borned GC objects*/
 		sophon_gc_set_nb_count(vm, p->gc_level);
 
@@ -2520,6 +2518,11 @@ next_state:
 
 			curr->t = 0xFFFF;
 
+			if ((p->flags & SOPHON_PARSER_FL_AUTO_SEMICOLON) &&
+					(curr == &p->fetch)) {
+				p->flags &= ~SOPHON_PARSER_FL_AUTO_SEMICOLON;
+			}
+
 			DEBUG(("shift to state %d", curr->s));
 			goto next_state;
 		} else if (sym == T_EPSILON) {
@@ -2566,7 +2569,7 @@ reduce:
 
 		SOPHON_ASSERT(pop < p->top);
 
-		if ((tid == N_EXPR_OR_EMPTY) && (p->flags & SOPHON_PARSER_FL_EOF))
+		if ((rid == R_ACCEPT) && !(p->flags & SOPHON_PARSER_FL_EOF))
 			goto error;
 
 		if (!(p->flags & SOPHON_PARSER_FL_ERROR)) {
@@ -2853,7 +2856,6 @@ sophon_eval (Sophon_VM *vm, Sophon_Encoding enc, Sophon_IOFunc input,
 	mod = sophon_module_create(vm);
 
 	r = sophon_parse(vm, mod, enc, input, data, flags|SOPHON_PARSER_FL_EVAL);
-
 	if (r == SOPHON_OK) {
 		Sophon_Value thisv;
 

@@ -166,7 +166,7 @@ struct Sophon_VM_s {
 	Sophon_U32 mm_max_used;
 
 #ifdef SOPHON_MM_DEBUG
-	Sophon_Ptr mm_dbg;
+	Sophon_Ptr mm_dbg_data;
 #endif
 
 	/*Number pool*/

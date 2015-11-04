@@ -902,9 +902,3 @@ function runTestCase(testcase) {
     }
 }
 
-function NotEarlyError(msg) {
-}
-
-NotEarlyError.toString = function(){
-	return "NotEarlyError";
-}

@@ -138,6 +138,9 @@ obj_add_prop (Sophon_VM *vm, Sophon_Value v, Sophon_Value namev,
 		flags |= SOPHON_FL_HAVE_VALUE;
 	}
 
+	flags |= SOPHON_FL_HAVE_WRITABLE|SOPHON_FL_HAVE_CONFIGURABLE|
+			SOPHON_FL_HAVE_ENUMERABLE;
+
 	return sophon_value_define_prop(vm, v, namev, getv, setv, attrs, flags);
 }
 

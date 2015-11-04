@@ -11,6 +11,9 @@ function myRunTest(test)
 {
 	var myTestException = undefined;
 
+	//if (test.path != "TestCases/ch08/8.12/8.12.5/8.12.5-3-b_1.js")
+	//	return;
+
 	myTestException = runTest(test.code);
 
 	console.log("TEST:%s", test.path);

@@ -47,7 +47,7 @@
 #include "sophon_parser_internal.h"
 #include "sophon_ins_internal.h"
 
-/*#define DUMP_INS*/
+#define DUMP_INS
 
 static const char*
 ins_tags[] = {
@@ -280,7 +280,8 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 	SOPHON_MACRO_END
 
 #define I_store_run\
-	vm->retv = STACK(0);
+	if (CURR_FUNC->flags & SOPHON_FUNC_FL_EVAL)\
+		vm->retv = STACK(0);
 #define I_undef_run\
 	STACK(-1) = SOPHON_VALUE_UNDEFINED;
 #define I_null_run\
@@ -429,7 +430,7 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 	Sophon_U32 flags = (CURR_FUNC->flags & SOPHON_FUNC_FL_STRICT) ?\
 				SOPHON_FL_THROW : 0;\
 	r = sophon_value_delete_prop(vm, STACK(1), STACK(0), flags);\
-	if (flags) {\
+	if (flags && (r != SOPHON_OK)) {\
 		ret = SOPHON_ERR_THROW;\
 		goto exception;\
 	}\
@@ -467,8 +468,8 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 		THROW;\
 	}
 #define I_put_run\
-	if (sophon_value_put(vm, STACK(2), STACK(1), STACK(0),\
-					sophon_strict(vm) ? SOPHON_FL_THROW : 0)\
+	Sophon_U32 flags = sophon_strict(vm) ? SOPHON_FL_THROW : 0;\
+	if ((r = sophon_value_put(vm, STACK(2), STACK(1), STACK(0), flags))\
 				!= SOPHON_OK) {\
 		THROW;\
 	}
@@ -567,14 +568,16 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 	if (sophon_value_define_prop(vm, STACK(2), STACK(1),\
 					SOPHON_VALUE_UNDEFINED,\
 					STACK(0),\
-					0, SOPHON_FL_HAVE_SET) != SOPHON_OK) {\
+					0, SOPHON_FL_HAVE_SET|SOPHON_FL_THROW)\
+			!= SOPHON_OK) {\
 		THROW;\
 	}
 #define I_prop_get_run\
 	if (sophon_value_define_prop(vm, STACK(2), STACK(1),\
 					STACK(0),\
 					SOPHON_VALUE_UNDEFINED,\
-					0, SOPHON_FL_HAVE_GET) != SOPHON_OK) {\
+					0, SOPHON_FL_HAVE_GET|SOPHON_FL_THROW)\
+			!= SOPHON_OK) {\
 		THROW;\
 	}
 #define I_dup_run\
@@ -734,7 +737,8 @@ exception:
 		SP = TP;
 		TP = SOPHON_VALUE_GET_INT(STACK(-2));
 		IP = SOPHON_VALUE_GET_INT(STACK(-1));
-		ret = SOPHON_NONE;
+		if (ret < 0)
+			ret = SOPHON_NONE;
 		goto again;
 	}
 

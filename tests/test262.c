@@ -195,7 +195,7 @@ static SOPHON_FUNC(runTest)
 
 	test_vm = sophon_vm_create();
 
-	if ((r = load(test_vm, "main")) != SOPHON_OK)
+	if ((r = load(test_vm, "sta")) != SOPHON_OK)
 		goto fail;
 
 	if ((r = sophon_value_to_string(vm, SOPHON_ARG(0), &str)) != SOPHON_OK)
@@ -307,7 +307,6 @@ run_test (const char *name)
 	fclose(fp);
 
 	if (r == SOPHON_OK) {
-		printf("run test \"%s\"\n", name);
 		r = run_json(v);
 	}
 

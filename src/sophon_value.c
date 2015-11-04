@@ -953,15 +953,7 @@ sophon_value_for_in (Sophon_VM *vm, Sophon_U16 end_ip)
 			if (!(prop->attrs & SOPHON_PROP_ATTR_ENUMERABLE))
 				continue;
 
-			if (prop->attrs & SOPHON_PROP_ATTR_ACCESSOR) {
-				Sophon_AccessorProperty *aprop =
-						(Sophon_AccessorProperty*)prop;
-				if ((r = sophon_value_call(vm, aprop->getv, v, NULL, 0,
-						&stk->v[stk->sp - 1], 0)) != SOPHON_OK)
-					goto end;
-			} else {
-				stk->v[stk->sp - 1] = prop->value;
-			}
+			sophon_value_set_string(vm, &stk->v[stk->sp - 1], prop->name);
 
 			stk->ip = iter.cont_ip;
 			r = sophon_ins_run(vm);

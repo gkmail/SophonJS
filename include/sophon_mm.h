@@ -38,10 +38,20 @@ extern "C" {
 
 #include "sophon_types.h"
 
+#ifdef SOPHON_MM_DEBUG
+	#define sophon_mm_dbg_init(vm)\
+		SOPHON_MACRO_BEGIN\
+			(vm)->mm_dbg_data  = NULL;\
+		SOPHON_MACRO_END
+#else
+	#define sophon_mm_dbg_init(vm)
+#endif
+
 #define sophon_mm_init(vm)\
 	SOPHON_MACRO_BEGIN\
 		(vm)->mm_curr_used = 0;\
 		(vm)->mm_max_used  = 0;\
+		sophon_mm_dbg_init(vm);\
 	SOPHON_MACRO_END
 
 #define sophon_mm_deinit(vm)

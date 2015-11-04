@@ -1136,7 +1136,13 @@ retry:
 			}
 
 			if((sym == SOPHON_ERR_EOF) && (state == 0)) {
-				t = SOPHON_ERR_EOF;
+				if (l->cond == C_COMMENT_BLOCK) {
+					lex_error(vm, SOPHON_PARSER_ERROR,
+							"unterminated comment block");
+					t = SOPHON_ERR_LEX;
+				} else {
+					t = SOPHON_ERR_EOF;
+				}
 			} else {
 				lex_error(vm, SOPHON_PARSER_ERROR,
 							"illegal character");

@@ -130,7 +130,7 @@ sophon_vm_destroy(Sophon_VM *vm)
 #endif
 
 #ifdef SOPHON_MM_DEBUG
-	sophon_mm_check_all();
+	sophon_mm_check_all(vm);
 #endif
 
 	while (vm->stack) {
