@@ -169,8 +169,17 @@ sophon_decl_load (Sophon_VM *vm, Sophon_Module *mod, Sophon_Object *obj,
 		}
 
 		if (name == vm->__call_str) {
+			obj->protov = vm->Function_protov;
 			obj->primv = getv;
 		} else {
+			if (name == vm->prototype_str) {
+				sophon_value_define_prop(vm, getv,
+							SOPHON_VALUE_GC(vm->constructor_str),
+							SOPHON_VALUE_GC(obj),
+							SOPHON_VALUE_UNDEFINED,
+							0, SOPHON_FL_DATA_PROP);
+			}
+
 			sophon_value_define_prop(vm, SOPHON_VALUE_GC(obj),
 						SOPHON_VALUE_GC(name), getv, setv, attrs, flags);
 		}

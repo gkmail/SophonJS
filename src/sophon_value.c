@@ -61,23 +61,28 @@ sophon_value_to_prim (Sophon_VM *vm, Sophon_Value v, Sophon_Value *outv,
 		return SOPHON_OK;
 	}
 
-	obj = SOPHON_VALUE_GET_OBJECT(v);
-	if (SOPHON_VALUE_IS_BOOL(obj->primv) ||
-				SOPHON_VALUE_IS_NUMBER(obj->primv) ||
-				SOPHON_VALUE_IS_INT(obj->primv) ||
-				SOPHON_VALUE_IS_STRING(obj->primv)) {
-		*outv = obj->primv;
-		return SOPHON_OK;
-	}
+	if (SOPHON_VALUE_IS_OBJECT(v)) {
+		obj = SOPHON_VALUE_GET_OBJECT(v);
+		if (SOPHON_VALUE_IS_BOOL(obj->primv) ||
+					SOPHON_VALUE_IS_NUMBER(obj->primv) ||
+					SOPHON_VALUE_IS_INT(obj->primv) ||
+					SOPHON_VALUE_IS_STRING(obj->primv)) {
+			*outv = obj->primv;
+			return SOPHON_OK;
+		}
 
-	if (type == SOPHON_PRIM_UNDEF) {
-		type = (obj->protov == vm->Date_protov) ? SOPHON_PRIM_STRING :
-				SOPHON_PRIM_NUMBER;
+		if (type == SOPHON_PRIM_UNDEF) {
+			type = (obj->protov == vm->Date_protov) ? SOPHON_PRIM_STRING :
+					SOPHON_PRIM_NUMBER;
+		}
+	} else if (type == SOPHON_PRIM_UNDEF) {
+		type = SOPHON_PRIM_NUMBER;
 	}
 
 	if (type == SOPHON_PRIM_STRING) {
 		r = sophon_value_call_prop(vm, v, SOPHON_VALUE_GC(vm->toString_str),
 					NULL, 0, outv, SOPHON_FL_NONE);
+
 		if (r == SOPHON_OK) {
 			if (!sophon_value_is_object(*outv))
 				return r;
@@ -92,6 +97,7 @@ sophon_value_to_prim (Sophon_VM *vm, Sophon_Value v, Sophon_Value *outv,
 	} else {
 		r = sophon_value_call_prop(vm, v, SOPHON_VALUE_GC(vm->valueOf_str),
 					NULL, 0, outv, SOPHON_FL_NONE);
+
 		if (r == SOPHON_OK) {
 			if (!sophon_value_is_object(*outv))
 				return r;
@@ -99,6 +105,7 @@ sophon_value_to_prim (Sophon_VM *vm, Sophon_Value v, Sophon_Value *outv,
 
 		r = sophon_value_call_prop(vm, v, SOPHON_VALUE_GC(vm->toString_str),
 					NULL, 0, outv, SOPHON_FL_NONE);
+
 		if (r == SOPHON_OK) {
 			if (!sophon_value_is_object(*outv))
 				return r;
@@ -192,10 +199,16 @@ sophon_value_call (Sophon_VM *vm, Sophon_Value callv,
 				return SOPHON_OK;
 
 			r = sophon_ins_run(vm);
-			if (r == SOPHON_OK) {
-				*retv = vm->retv;
-				sophon_value_set_undefined(vm, &vm->retv);
-			}
+
+			if ((r == SOPHON_OK) ||
+						((r == SOPHON_NONE) &&
+						 (func->flags & SOPHON_FUNC_FL_EVAL)))
+				*retv = vm->stack->retv;
+
+			sophon_stack_pop(vm);
+
+			if (r == SOPHON_NONE)
+				r = SOPHON_OK;
 		}
 	}
 
@@ -235,9 +248,8 @@ sophon_value_to_object (Sophon_VM *vm, Sophon_Value v, Sophon_Object **pobj)
 				return SOPHON_OK;
 			case SOPHON_GC_String:
 				obj = sophon_object_create(vm);
-				proto = sophon_value_get_class(vm, v);
-				sophon_value_set_gc(vm, &obj->primv, gco);
-				sophon_value_set_object(vm, &obj->protov, proto);
+				obj->protov = vm->String_protov;
+				obj->primv = v;
 				*pobj = obj;
 				return SOPHON_OK;
 #define PRIM_TO_OBJ(o)\
@@ -261,8 +273,8 @@ sophon_value_to_object (Sophon_VM *vm, Sophon_Value v, Sophon_Object **pobj)
 	} else if (SOPHON_VALUE_IS_INT(v) || SOPHON_VALUE_IS_NUMBER(v) ||
 				SOPHON_VALUE_IS_BOOL(v)) {
 		obj = sophon_object_create(vm);
-		proto = sophon_value_get_class(vm, v);
-		sophon_value_set_object(vm, &obj->protov, proto);
+		obj->protov = SOPHON_VALUE_IS_BOOL(v) ? vm->Boolean_protov :
+					vm->Number_protov;
 		obj->primv = v;
 		*pobj = obj;
 		return SOPHON_OK;
@@ -328,7 +340,7 @@ sophon_value_to_bool (Sophon_VM *vm, Sophon_Value v)
 	} else if (SOPHON_VALUE_IS_NUMBER(v)) {
 		Sophon_Number d = SOPHON_VALUE_GET_NUMBER(v);
 
-		if ((d == 0) || (d == SOPHON_NAN))
+		if ((d == 0) || sophon_isnan(d))
 			return SOPHON_FALSE;
 	} else if (SOPHON_VALUE_IS_GC(v)) {
 		Sophon_GCObject *gco = (Sophon_GCObject*)SOPHON_VALUE_GET_GC(v);
@@ -374,7 +386,9 @@ sophon_value_to_number (Sophon_VM *vm, Sophon_Value v, Sophon_Number *pd)
 			Sophon_Char *cstr, *end;
 			Sophon_U32 len;
 		
-			if (!sophon_string_casecmp(vm, str, vm->NaN_str)) {
+			if (sophon_string_length(vm, str) == 0) {
+				d = 0;
+			} else if (!sophon_string_casecmp(vm, str, vm->NaN_str)) {
 				d = SOPHON_NAN;
 			} else if (!sophon_string_casecmp(vm, str, vm->Infinity_str)) {
 				d = SOPHON_INFINITY;
@@ -392,9 +406,7 @@ sophon_value_to_number (Sophon_VM *vm, Sophon_Value v, Sophon_Number *pd)
 				}
 
 				if (r != SOPHON_OK) {
-					sophon_throw(vm, vm->TypeError,
-							"String cannot be converted to number");
-					return r;
+					d = SOPHON_NAN;
 				}
 			}
 		} else if (gco->gc_type == SOPHON_GC_Object) {
@@ -760,14 +772,33 @@ Sophon_Result
 sophon_value_in (Sophon_VM *vm, Sophon_Value lv, Sophon_Value rv,
 			Sophon_Bool *pb)
 {
+	Sophon_Object *obj;
 	Sophon_Result r;
 
 	SOPHON_ASSERT(vm && pb);
 
-	if ((r = sophon_value_prop_desc(vm, rv, lv, NULL)) < 0)
-		return r;
+	while (1) {
+		if ((r = sophon_value_prop_desc(vm, rv, lv, NULL)) < 0)
+			return r;
 
-	*pb = (r == SOPHON_OK) ? SOPHON_TRUE : SOPHON_FALSE;
+		if (r == SOPHON_OK) {
+			*pb = SOPHON_TRUE;
+			return SOPHON_OK;
+		}
+
+		if (!sophon_value_is_object(rv))
+			break;
+
+		if ((r = sophon_value_to_object(vm, rv, &obj)) != SOPHON_OK)
+			return r;
+
+		if (sophon_value_is_null(obj->protov))
+			break;
+
+		rv = obj->protov;
+	}
+
+	*pb = SOPHON_FALSE;
 	return SOPHON_OK;
 }
 
@@ -862,7 +893,7 @@ sophon_value_typeof (Sophon_VM *vm, Sophon_Value v)
 	if (SOPHON_VALUE_IS_UNDEFINED(v))
 		return vm->undefined_str;
 	if (SOPHON_VALUE_IS_NULL(v))
-		return vm->null_str;
+		return vm->object_str;
 	if (SOPHON_VALUE_IS_BOOL(v))
 		return vm->boolean_str;
 	if (SOPHON_VALUE_IS_INT(v) || SOPHON_VALUE_IS_NUMBER(v))
@@ -881,13 +912,6 @@ sophon_value_typeof (Sophon_VM *vm, Sophon_Value v)
 			obj = SOPHON_VALUE_GET_OBJECT(v);
 			if (SOPHON_VALUE_IS_CLOSURE(obj->primv))
 				return vm->function_str;
-			if (SOPHON_VALUE_IS_INT(obj->primv) ||
-						SOPHON_VALUE_IS_NUMBER(obj->primv))
-				return vm->number_str;
-			if (SOPHON_VALUE_IS_BOOL(obj->primv))
-				return vm->boolean_str;
-			if (SOPHON_VALUE_IS_STRING(obj->primv))
-				return vm->string_str;
 		}
 	}
 
@@ -936,7 +960,7 @@ sophon_value_for_in (Sophon_VM *vm, Sophon_U16 end_ip)
 			if ((r == SOPHON_BREAK) && (stk->ip == iter.brk_ip))
 				goto break_end;
 
-			if (r != SOPHON_OK)
+			if (r != SOPHON_NONE)
 				goto end;
 		}
 	}
@@ -964,7 +988,7 @@ sophon_value_for_in (Sophon_VM *vm, Sophon_U16 end_ip)
 			if ((r == SOPHON_BREAK) && (stk->ip == iter.brk_ip))
 				goto break_end;
 
-			if (r != SOPHON_OK)
+			if (r != SOPHON_NONE)
 				goto end;
 		}
 	}
@@ -985,8 +1009,12 @@ sophon_value_dump (Sophon_VM *vm, Sophon_Value v)
 	Sophon_String *str;
 	char *cstr;
 	Sophon_U32 len;
+	Sophon_Result r;
 
-	sophon_value_to_string_ex(vm, v, SOPHON_TRUE, &str);
+	if ((r = sophon_value_to_string_ex(vm, v, SOPHON_TRUE, &str))
+				!= SOPHON_OK) {
+		return;
+	}
 
 	if (sophon_string_new_utf8_cstr(vm, str, &cstr, &len) >= 0){
 		sophon_pr("%s", cstr);

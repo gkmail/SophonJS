@@ -57,7 +57,6 @@ static void
 vm_init (Sophon_VM *vm)
 {
 	/*Initialize exception and return value*/
-	sophon_value_set_undefined(vm, &vm->retv);
 	sophon_value_set_undefined(vm, &vm->excepv);
 
 	/*Get error objects*/

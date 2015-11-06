@@ -59,6 +59,8 @@ stack_alloc (Sophon_VM *vm, Sophon_Int vsize)
 	stk->sp = 0;
 	stk->tp = 0xFFFF;
 
+	sophon_value_set_undefined(vm, &stk->retv);
+
 	stk->bottom = vm->stack;
 	vm->stack = stk;
 

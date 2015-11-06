@@ -281,7 +281,7 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 
 #define I_store_run\
 	if (CURR_FUNC->flags & SOPHON_FUNC_FL_EVAL)\
-		vm->retv = STACK(0);
+		TOP->retv = STACK(0);
 #define I_undef_run\
 	STACK(-1) = SOPHON_VALUE_UNDEFINED;
 #define I_null_run\
@@ -430,7 +430,7 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 	Sophon_U32 flags = (CURR_FUNC->flags & SOPHON_FUNC_FL_STRICT) ?\
 				SOPHON_FL_THROW : 0;\
 	r = sophon_value_delete_prop(vm, STACK(1), STACK(0), flags);\
-	if (flags && (r != SOPHON_OK)) {\
+	if (flags && (r != SOPHON_OK) && (r != SOPHON_ERR_ACCESS)) {\
 		ret = SOPHON_ERR_THROW;\
 		goto exception;\
 	}\
@@ -523,7 +523,7 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 	sophon_gc_set_nb_count(vm, gc_level);\
 	THROW;
 #define I_return_run\
-	vm->retv = STACK(0);\
+	TOP->retv = STACK(0);\
 	sophon_gc_set_nb_count(vm, gc_level);\
 	ret = SOPHON_OK;\
 	goto exception;
@@ -568,7 +568,9 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 	if (sophon_value_define_prop(vm, STACK(2), STACK(1),\
 					SOPHON_VALUE_UNDEFINED,\
 					STACK(0),\
-					0, SOPHON_FL_HAVE_SET|SOPHON_FL_THROW)\
+					SOPHON_PROP_ATTR_CONFIGURABLE,\
+					SOPHON_FL_HAVE_CONFIGURABLE|SOPHON_FL_HAVE_SET|\
+					SOPHON_FL_THROW)\
 			!= SOPHON_OK) {\
 		THROW;\
 	}
@@ -576,7 +578,9 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 	if (sophon_value_define_prop(vm, STACK(2), STACK(1),\
 					STACK(0),\
 					SOPHON_VALUE_UNDEFINED,\
-					0, SOPHON_FL_HAVE_GET|SOPHON_FL_THROW)\
+					SOPHON_PROP_ATTR_CONFIGURABLE,\
+					SOPHON_FL_HAVE_CONFIGURABLE|SOPHON_FL_HAVE_GET|\
+					SOPHON_FL_THROW)\
 			!= SOPHON_OK) {\
 		THROW;\
 	}
@@ -637,7 +641,6 @@ Sophon_Result
 sophon_ins_run (Sophon_VM *vm)
 {
 	Sophon_Stack *enter_stack;
-	Sophon_Stack *tmp_stack;
 	Sophon_Stack *top_stack;
 	Sophon_DeclFrame *var_env;
 	Sophon_Function *curr_func;
@@ -746,25 +749,19 @@ exception:
 		return ret;
 	}
 
-	tmp_stack = top_stack;
+	if (enter_stack != top_stack) {
+		Sophon_Value rv = TOP->retv;
 
-	sophon_stack_pop(vm);
-	if (tmp_stack != enter_stack) {
+		sophon_stack_pop(vm);
 		UPDATE();
+
 		if (ret >= 0) {
 			ret = SOPHON_NONE;
-			STACK(0) = vm->retv;
+			STACK(0) = rv;
 			goto again;
 		} else {
 			goto exception;
 		}
-	}
-
-	if (ret == SOPHON_NONE) {
-		if (!(CURR_FUNC->flags & SOPHON_FUNC_FL_EVAL)) {
-			vm->retv = SOPHON_VALUE_UNDEFINED;
-		}
-		ret = SOPHON_OK;
 	}
 
 	return ret;

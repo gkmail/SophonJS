@@ -956,7 +956,8 @@ parser_pre_inc_dec (Sophon_VM *vm, Sophon_Bool dec, Sophon_Location *loc,
 					OP_merge, &vout->expr.name_ops,
 					OP_dup, 1, OP_dup, 1, OP_get,
 					OP_one, dec ? OP_sub : OP_add,
-					OP_put, OP_mov, 2, OP_pop, 2, -1);
+					OP_put, OP_mov, 2, OP_pop, 2,
+					OP_anchor, anchor, -1);
 	}
 
 	APPEND(vm, &vout->expr.base_ops,

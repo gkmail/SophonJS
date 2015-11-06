@@ -211,9 +211,6 @@ struct Sophon_VM_s {
 	Sophon_Value      RegExp_protov;
 	Sophon_Value      Date_protov;
 
-	/*Return value*/
-	Sophon_Value      retv;
-
 	/*Exception value*/
 	Sophon_Value      excepv;
 

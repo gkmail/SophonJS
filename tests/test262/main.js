@@ -7,12 +7,20 @@ function myTest262(json)
 	})
 }
 
+var ignore = [
+"TestCases/ch08/8.5/8.5.1.js",
+"TestCases/ch08/8.5/S8.5_A11_T1.js",
+"TestCases/ch08/8.5/S8.5_A13_T2.js",
+"TestCases/ch08/8.5/S8.5_A2.1.js",
+"TestCases/ch08/8.5/S8.5_A2.2.js"
+];
+
 function myRunTest(test)
 {
 	var myTestException = undefined;
 
-	//if (test.path != "TestCases/ch08/8.12/8.12.5/8.12.5-3-b_1.js")
-	//	return;
+	if (ignore.indexOf(test.path) != -1)
+		return;
 
 	myTestException = runTest(test.code);
 

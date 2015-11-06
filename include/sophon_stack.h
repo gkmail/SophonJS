@@ -45,6 +45,7 @@ struct Sophon_Stack_s {
 	Sophon_Frame   *var_env;/**< The variant frame*/
 	Sophon_Frame   *lex_env;/**< The lexical frame*/
 	Sophon_Value    calleev;/**< The callee closure value*/
+	Sophon_Value    retv;   /**< Return value*/
 	Sophon_Function *func;  /**< The current function*/
 	Sophon_PropIter *pi_bottom; /**< The bottom property iterator*/
 	Sophon_U16      vbuf_size; /**< Value buffer size*/

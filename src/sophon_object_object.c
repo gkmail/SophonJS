@@ -138,9 +138,6 @@ obj_add_prop (Sophon_VM *vm, Sophon_Value v, Sophon_Value namev,
 		flags |= SOPHON_FL_HAVE_VALUE;
 	}
 
-	flags |= SOPHON_FL_HAVE_WRITABLE|SOPHON_FL_HAVE_CONFIGURABLE|
-			SOPHON_FL_HAVE_ENUMERABLE;
-
 	return sophon_value_define_prop(vm, v, namev, getv, setv, attrs, flags);
 }
 
@@ -575,10 +572,10 @@ static OBJECT_FUNC(valueOf)
 	if (SOPHON_VALUE_IS_OBJECT(thisv)) {
 		Sophon_Object *obj = SOPHON_VALUE_GET_OBJECT(thisv);
 
-		if (sophon_value_is_object(obj->primv))
-			*retv = thisv;
-		else
+		if (!sophon_value_is_undefined(obj->primv))
 			*retv = obj->primv;
+		else
+			*retv = thisv;
 	} else {
 		*retv = thisv;
 	}

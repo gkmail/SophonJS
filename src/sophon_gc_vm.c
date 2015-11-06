@@ -34,7 +34,6 @@ gc_mark_vm (Sophon_VM *vm)
 {
 	Sophon_Stack *stk;
 
-	sophon_value_mark(vm, vm->retv);
 	sophon_value_mark(vm, vm->excepv);
 	sophon_value_mark(vm, vm->Arguments_protov);
 
@@ -62,6 +61,7 @@ gc_mark_vm (Sophon_VM *vm)
 		}
 
 		sophon_value_mark(vm, stk->calleev);
+		sophon_value_mark(vm, stk->retv);
 
 		if (stk->func)
 			gc_mark(vm, (Sophon_GCObject*)stk->func->module);

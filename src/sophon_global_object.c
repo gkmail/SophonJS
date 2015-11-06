@@ -383,6 +383,9 @@ sophon_global_init (Sophon_VM *vm)
 				SOPHON_VALUE_GC(vm->prototype_str),
 				&vm->Function_protov, 0);
 
+	obj->protov  = vm->Function_protov;
+	fobj->protov = vm->Function_protov;
+
 	/*Load global object*/
 	glob = sophon_object_create(vm);
 	r = sophon_decl_load(vm, mod, glob, global_object_props);
@@ -407,7 +410,6 @@ sophon_global_init (Sophon_VM *vm)
 	load_prototype(vm, mod, vm->Boolean_str, &vm->Boolean_protov);
 	load_prototype(vm, mod, vm->Number_str, &vm->Number_protov);
 	load_prototype(vm, mod, vm->String_str, &vm->String_protov);
-	load_prototype(vm, mod, vm->Function_str, &vm->Function_protov);
 	load_prototype(vm, mod, vm->Array_str, &vm->Array_protov);
 	load_prototype(vm, mod, vm->RegExp_str, &vm->RegExp_protov);
 	load_prototype(vm, mod, vm->Date_str, &vm->Date_protov);
