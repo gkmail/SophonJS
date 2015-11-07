@@ -43,6 +43,7 @@ extern "C" {
 /**\brief Module*/
 struct Sophon_Module_s {
 	SOPHON_GC_HEADER
+	Sophon_Module     *base;       /**< Base module pointer*/
 	Sophon_String     *name;       /**< File name of the module*/
 	Sophon_Value      *consts;     /**< Constant value buffer*/
 	Sophon_Function **funcs;       /**< Functions buffer*/

@@ -43,6 +43,7 @@ extern "C" {
 	i(get_bind, Const, 1)\
 	i(get_bind_nt, Const, 1)\
 	i(put_bind, Const, 0)\
+	i(put_fbind, Const, 0)\
 	i(get_var, Const, 1)\
 	i(put_var, Const, 0)\
 	i(break, Jump, 0)\

@@ -128,34 +128,42 @@ extern void          sophon_stack_pop_frame (Sophon_VM *vm);
  * \brief Delete a binding by its name
  * \param[in] vm The current virtual machine
  * \param name The binding name
+ * \param flags Invoek flags
  * \return SOPHON_OK On success
  * \retuen SOPHON_NENE The binding do not exist
  * \retval <0 On error
  */
 extern Sophon_Result sophon_stack_delete_binding (Sophon_VM *vm,
-						Sophon_String *name);
+						Sophon_String *name,
+						Sophon_U32 flags);
 
 /**
  * \brief Get a binding value by its name
  * \param[in] vm The current virtual machine
  * \param name The binding name
  * \param[out] getv Return the binding value
+ * \param flags Invoke flags
  * \return SOPHON_OK On success
  * \retval <0 On error
  */
 extern Sophon_Result sophon_stack_get_binding (Sophon_VM *vm,
-						Sophon_String *name, Sophon_Value *getv);
+						Sophon_String *name,
+						Sophon_Value *getv,
+						Sophon_U32 flags);
 
 /**
  * \brief Set a binding value by its name
  * \param[in] vm The current virtual machine
  * \param name The binding name
  * \param setv The new binding value
+ * \param flags Invoke flags
  * \return SOPHON_OK On success
  * \retval <0 On error
  */
 extern Sophon_Result sophon_stack_put_binding (Sophon_VM *vm,
-						Sophon_String *name, Sophon_Value setv);
+						Sophon_String *name,
+						Sophon_Value setv,
+						Sophon_U32 flags);
 
 /**
  * \brief Get this binding value
@@ -163,6 +171,13 @@ extern Sophon_Result sophon_stack_put_binding (Sophon_VM *vm,
  * \return This binding value
  */
 extern Sophon_Value sophon_stack_get_this (Sophon_VM *vm);
+
+/**
+ * \brief Get the current module
+ * \param[in] vm The current virtual machine
+ * \return The current module
+ */
+extern Sophon_Module* sophon_stack_get_module (Sophon_VM *vm);
 
 #ifdef __cplusplus
 }

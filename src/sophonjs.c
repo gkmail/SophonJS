@@ -225,7 +225,7 @@ js_file (void)
 					(Sophon_Ptr)ins_fp);
 	} else {
 		r = sophon_parse(vm, mod, SOPHON_UTF8, file_input_func,
-					(Sophon_Ptr)input_fp, 0);
+					(Sophon_Ptr)input_fp, SOPHON_PARSER_FL_EVAL);
 	}
 
 	if (r == SOPHON_OK) {

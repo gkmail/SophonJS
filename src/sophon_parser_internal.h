@@ -105,6 +105,7 @@ extern "C" {
 #define FOR_EACH_ABSTRACT_OP(o)\
 	o(get_bind,   Bind, 1)/*60*/\
 	o(put_bind,   Bind, 0)\
+	o(put_fbind,  Bind, 0)\
 	o(dup_ref, Ref, 1)\
 	o(mov_ref, Ref, 0)\
 	o(pop_ref, Ref, 0)\

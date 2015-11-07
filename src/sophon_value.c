@@ -350,12 +350,6 @@ sophon_value_to_bool (Sophon_VM *vm, Sophon_Value v)
 
 			if (!sophon_string_length(vm, str))
 				return SOPHON_FALSE;
-		} else if (gco->gc_type == SOPHON_GC_Object) {
-			Sophon_Object *obj = (Sophon_Object*)gco;
-
-			if (SOPHON_VALUE_IS_BOOL(obj->primv)) {
-				return SOPHON_VALUE_GET_BOOL(obj->primv);
-			}
 		}
 	}
 

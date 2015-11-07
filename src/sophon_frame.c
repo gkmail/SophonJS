@@ -41,6 +41,7 @@
 #include <sophon_object.h>
 #include <sophon_module.h>
 #include <sophon_arguments.h>
+#include <sophon_string.h>
 #include <sophon_debug.h>
 
 Sophon_DeclFrame*
@@ -210,13 +211,30 @@ sophon_decl_frame_add_binding (Sophon_VM *vm, Sophon_DeclFrame *frame,
 
 	SOPHON_ASSERT(vm && frame);
 
-	r = sophon_hash_add(vm, &frame->var_hash,
-				sophon_direct_key,
-				sophon_direct_equal,
-				(Sophon_Ptr)name,
-				&ent);
-	if (r == SOPHON_OK) {
-		ent->value = (Sophon_Ptr)SOPHON_VALUE_UNDEFINED;
+	if (((Sophon_Frame*)frame)->gc_type == SOPHON_GC_GlobalFrame) {
+		Sophon_Module *mod;
+
+		if (frame->func) {
+			mod = frame->func->module->base;
+		} else {
+			mod = vm->glob_module;
+		}
+
+		r = sophon_value_define_prop(vm, mod->globv,
+				SOPHON_VALUE_GC(name),
+				SOPHON_VALUE_UNDEFINED,
+				SOPHON_VALUE_UNDEFINED,
+				SOPHON_DATA_PROP_ATTR,
+				SOPHON_FL_DATA_PROP);
+	} else {
+		r = sophon_hash_add(vm, &frame->var_hash,
+					sophon_direct_key,
+					sophon_direct_equal,
+					(Sophon_Ptr)name,
+					&ent);
+		if (r == SOPHON_OK) {
+			ent->value = (Sophon_Ptr)SOPHON_VALUE_UNDEFINED;
+		}
 	}
 
 	return r;

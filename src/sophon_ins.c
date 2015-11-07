@@ -444,7 +444,7 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 					"Cannot delete binding in strict mode");\
 		THROW;\
 	}\
-	r = sophon_stack_delete_binding(vm, name);\
+	r = sophon_stack_delete_binding(vm, name, 0);\
 	b = (r == SOPHON_OK) ? SOPHON_TRUE : SOPHON_FALSE;\
 	sophon_value_set_bool(vm, &STACK(-1), b);
 #define I_typeof_run\
@@ -453,7 +453,7 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 #define I_this_run\
 	if (sophon_value_is_null(VAR_ENV->thisv) ||\
 				sophon_value_is_undefined(VAR_ENV->thisv))\
-		STACK(-1) = vm->glob_module->globv;\
+		STACK(-1) = CURR_MODULE->base->globv;\
 	else\
 		STACK(-1) = VAR_ENV->thisv;
 #define I_const_run\
@@ -610,7 +610,7 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 #define I_debugger_run
 #define I_get_bind_run\
 	Sophon_String *name = SOPHON_VALUE_GET_STRING(CONST(id));\
-	r = sophon_stack_get_binding(vm, name, &STACK(-1));\
+	r = sophon_stack_get_binding(vm, name, &STACK(-1), 0);\
 	if (r == SOPHON_NONE) {\
 		sophon_throw(vm, vm->ReferenceError, "binding has not been defined");\
 		THROW;\
@@ -619,7 +619,7 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 	}
 #define I_get_bind_nt_run\
 	Sophon_String *name = SOPHON_VALUE_GET_STRING(CONST(id));\
-	r = sophon_stack_get_binding(vm, name, &STACK(-1));\
+	r = sophon_stack_get_binding(vm, name, &STACK(-1), 0);\
 	if (r == SOPHON_NONE) {\
 		sophon_value_set_undefined(vm, &STACK(-1));\
 	} else if (r != SOPHON_OK) {\
@@ -627,7 +627,13 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 	}
 #define I_put_bind_run\
 	Sophon_String *name = SOPHON_VALUE_GET_STRING(CONST(id));\
-	if (sophon_stack_put_binding(vm, name, STACK(0)) != SOPHON_OK) {\
+	if (sophon_stack_put_binding(vm, name, STACK(0), 0) != SOPHON_OK) {\
+		THROW;\
+	}
+#define I_put_fbind_run\
+	Sophon_String *name = SOPHON_VALUE_GET_STRING(CONST(id));\
+	if (sophon_stack_put_binding(vm, name, STACK(0), SOPHON_FL_FORCE)\
+			!= SOPHON_OK) {\
 		THROW;\
 	}
 #define I_get_var_run\

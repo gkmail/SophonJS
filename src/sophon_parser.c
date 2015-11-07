@@ -2255,12 +2255,14 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 
 			func  = FUNC(0);
 			frame = FRAME(1);
+			
+			parser_add_var(vm, &L(1), func->func->name);
 
 			id = ADD_CONST(SOPHON_VALUE_GC(func->func->name));
 			v->ops = NULL;
 
 			APPEND(vm, &frame->ops, L(0).first_line, OP_closure,
-						func->func->id, OP_put_bind, id, OP_pop, 1, -1);
+						func->func->id, OP_put_fbind, id, OP_pop, 1, -1);
 			r = parser_pop_func(vm, &V(8).ops);
 			if (r != SOPHON_OK)
 				return r;
@@ -2855,13 +2857,12 @@ sophon_eval (Sophon_VM *vm, Sophon_Encoding enc, Sophon_IOFunc input,
 	gc_level = sophon_gc_get_nb_count(vm);
 
 	mod = sophon_module_create(vm);
+	mod->base = sophon_stack_get_module(vm);
 
 	r = sophon_parse(vm, mod, enc, input, data, flags|SOPHON_PARSER_FL_EVAL);
 	if (r == SOPHON_OK) {
-		Sophon_Value thisv;
-
-		thisv = sophon_stack_get_this(vm);
-		r = sophon_value_call(vm, mod->globv, thisv, NULL, 0, retv, 0);
+		r = sophon_value_call(vm, mod->globv, SOPHON_VALUE_UNDEFINED, NULL,
+				0, retv, 0);
 	}
 
 	sophon_gc_set_nb_count(vm, gc_level);

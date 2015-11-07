@@ -8,6 +8,8 @@ function myTest262(json)
 }
 
 var ignore = [
+"TestCases/ch08/8.7/S8.7.1_A2.js",
+"TestCases/ch08/8.7/S8.7_A5_T1.js",
 "TestCases/ch08/8.5/8.5.1.js",
 "TestCases/ch08/8.5/S8.5_A11_T1.js",
 "TestCases/ch08/8.5/S8.5_A13_T2.js",
@@ -20,6 +22,9 @@ function myRunTest(test)
 	var myTestException = undefined;
 
 	if (ignore.indexOf(test.path) != -1)
+		return;
+
+	if (test.path!="TestCases/ch09/9.2/S9.2_A6_T1.js")
 		return;
 
 	myTestException = runTest(test.code);

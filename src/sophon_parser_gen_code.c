@@ -130,6 +130,7 @@ parser_gen_code (Sophon_VM *vm, Sophon_Function *func, Sophon_ParserOp **ops)
 					break;
 				}
 				case OP_put_bind:
+				case OP_put_fbind:
 				case OP_get_bind: {
 					Sophon_ParserBind *bind = (Sophon_ParserBind*)op;
 					Sophon_Bool put = (op->type == OP_put_bind);
@@ -375,13 +376,16 @@ calc_end:
 					FOR_EACH_INS_OP(GEN_INS)
 
 					case OP_put_bind:
+					case OP_put_fbind:
 					case OP_get_bind: {
 						Sophon_ParserBind *bind = (Sophon_ParserBind*)op;
 						Sophon_Bool put = (op->type == OP_put_bind);
 
 						if (bind->var_id == 0xFFFF) {
-							if (put) {
+							if (op->type == OP_put_bind) {
 								*pi = I_put_bind;
+							} else if (op->type == OP_put_fbind) {
+								*pi = I_put_fbind;
 							} else if (bind->flags &
 										SOPHON_PARSER_BIND_NOT_THROW) {
 								*pi = I_get_bind_nt;

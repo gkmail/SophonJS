@@ -48,6 +48,7 @@ sophon_module_create (Sophon_VM *vm)
 
 	SOPHON_GC_HEADER_INIT(mod, SOPHON_GC_Module);
 
+	mod->base   = mod;
 	mod->name   = NULL;
 	mod->consts = NULL;
 	mod->funcs  = NULL;
@@ -211,7 +212,8 @@ sophon_module_call (Sophon_VM *vm, Sophon_Module *mod, Sophon_Value *argv,
 	if (!retv)
 		retv = &v;
 
-	return sophon_value_call(vm, mod->globv, mod->globv, argv, argc, retv, 0);
+	return sophon_value_call(vm, mod->globv, SOPHON_VALUE_UNDEFINED, argv,
+			argc, retv, 0);
 }
 
 Sophon_Object*
