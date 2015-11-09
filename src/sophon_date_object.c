@@ -116,7 +116,6 @@ static DATE_FUNC(call)
 
 		sophon_value_set_string(vm, retv, str);
 	} else {
-		Sophon_Value tv;
 		Sophon_Object *obj;
 
 		if (argc == 0) {
@@ -148,7 +147,10 @@ static DATE_FUNC(call)
 				if ((r = sophon_value_to_number(vm, pv, &n)) != SOPHON_OK)
 					return r;
 
-				time = n;
+				if (sophon_isinf(n))
+					time = SOPHON_NAN;
+				else
+					time = sophon_trunc(n);
 			}
 		} else {
 			if ((r = get_date_args(vm, argv, argc, &date)) != SOPHON_OK)
@@ -161,11 +163,10 @@ static DATE_FUNC(call)
 			}
 		}
 
-		sophon_value_set_number(vm, &tv, time);
-		if ((r = sophon_value_to_object(vm, tv, &obj)) != SOPHON_OK)
+		if ((r = sophon_value_to_object(vm, thisv, &obj)) != SOPHON_OK)
 			return r;
 
-		sophon_value_set_object(vm, retv, obj);
+		sophon_value_set_number(vm, &obj->primv, time);
 	}
 
 	return SOPHON_OK;

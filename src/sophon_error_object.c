@@ -85,7 +85,12 @@ static SOPHON_FUNC(name##_call_func)\
 	Sophon_Object *obj;\
 	Sophon_String *msg;\
 	Sophon_Result r;\
-	obj = sophon_object_create(vm);\
+	if (sophon_value_is_undefined(thisv)) {\
+		obj = sophon_object_create(vm);\
+	} else {\
+		if ((r = sophon_value_to_object(vm, thisv, &obj)) != SOPHON_OK)\
+			return r;\
+	}\
 	if (sophon_value_is_undefined(SOPHON_ARG(0))) {\
 		msg = vm->empty_str;\
 	} else {\

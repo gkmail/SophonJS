@@ -46,8 +46,8 @@ static BOOLEAN_FUNC(call)
 	} else {
 		Sophon_Object *obj;
 
-		sophon_value_to_object(vm, SOPHON_VALUE_BOOL(b), &obj);
-		sophon_value_set_object(vm, retv, obj);
+		sophon_value_to_object(vm, thisv, &obj);
+		sophon_value_set_bool(vm, &obj->primv, b);
 	}
 
 	return SOPHON_OK;
@@ -80,7 +80,15 @@ static BOOLEAN_FUNC(valueOf)
 		return SOPHON_ERR_THROW;
 	}
 
-	b = sophon_value_to_bool(vm, thisv);
+	if (SOPHON_VALUE_IS_BOOL(thisv)) {
+		b = SOPHON_VALUE_GET_BOOL(thisv);
+	} else {
+		Sophon_Object *obj;
+
+		sophon_value_to_object(vm, thisv, &obj);
+
+		b = SOPHON_VALUE_GET_BOOL(obj->primv);
+	}
 
 	sophon_value_set_bool(vm, retv, b);
 

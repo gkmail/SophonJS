@@ -119,7 +119,7 @@ sophon_value_to_prim (Sophon_VM *vm, Sophon_Value v, Sophon_Value *outv,
 Sophon_Object*
 sophon_value_get_class (Sophon_VM *vm, Sophon_Value v)
 {
-	Sophon_Object *obj = SOPHON_VALUE_GET_OBJECT(vm->Object_protov);
+	Sophon_Object *obj = NULL;
 
 	if (SOPHON_VALUE_IS_BOOL(v)) {
 		obj = SOPHON_VALUE_GET_OBJECT(vm->Boolean_protov);
@@ -184,9 +184,10 @@ sophon_value_call (Sophon_VM *vm, Sophon_Value callv,
 					argv, argc, retv, flags);
 	} else {
 		func = clos->c.func.func;
+		sophon_value_set_undefined(vm, retv);
+
 		if (func->flags & SOPHON_FUNC_FL_NATIVE) {
-			sophon_value_set_undefined(vm, retv);
-			r = func->f.native(vm, thisv, argv, argc, retv);
+				r = func->f.native(vm, thisv, argv, argc, retv);
 		} else {
 			if (func->flags & SOPHON_FUNC_FL_GLOBAL)
 				r = sophon_stack_push_global(vm, thisv, callv, argv, argc);
@@ -275,6 +276,7 @@ sophon_value_to_object (Sophon_VM *vm, Sophon_Value v, Sophon_Object **pobj)
 		obj = sophon_object_create(vm);
 		obj->protov = SOPHON_VALUE_IS_BOOL(v) ? vm->Boolean_protov :
 					vm->Number_protov;
+
 		obj->primv = v;
 		*pobj = obj;
 		return SOPHON_OK;
@@ -838,13 +840,9 @@ sophon_value_new (Sophon_VM *vm, Sophon_Value cv, Sophon_Value *argv,
 	Sophon_Object *obj;
 	Sophon_Value protov;
 	Sophon_Value retv;
-	Sophon_Closure *clos;
 	Sophon_Result r;
 
 	SOPHON_ASSERT(objv);
-
-	if ((r = sophon_value_to_closure(vm, cv, &clos)) != SOPHON_OK)
-		return r;
 
 	r = sophon_value_get(vm, cv, SOPHON_VALUE_GC(vm->prototype_str), &protov,
 				SOPHON_FL_NONE);
@@ -854,28 +852,17 @@ sophon_value_new (Sophon_VM *vm, Sophon_Value cv, Sophon_Value *argv,
 		sophon_value_set_undefined(vm, &protov);
 	}
 
-	if (clos->gc_flags & SOPHON_GC_FL_NATIVE) {
-		/*Native constructor*/
-		r = sophon_value_call(vm, cv, SOPHON_VALUE_NULL, argv, argc, objv, 0);
-		if (r != SOPHON_OK)
-			return r;
+	obj = sophon_object_create(vm);
+	obj->protov = protov;
 
-		if (SOPHON_VALUE_IS_OBJECT(*objv)) {
-			obj = SOPHON_VALUE_GET_OBJECT(*objv);
+	sophon_value_set_object(vm, objv, obj);
 
-			if (protov != vm->Object_protov)
-				obj->protov = protov;
-		}
-	} else {
-		/*JS constructor*/
-		obj = sophon_object_create(vm);
-		obj->protov = protov;
+	r = sophon_value_call(vm, cv, *objv, argv, argc, &retv, 0);
+	if (r != SOPHON_OK)
+		return r;
 
-		sophon_value_set_object(vm, objv, obj);
-
-		r = sophon_value_call(vm, cv, *objv, argv, argc, &retv, 0);
-		if (r != SOPHON_OK)
-			return r;
+	if (!sophon_value_is_undefined(retv)) {
+		*objv = retv;
 	}
 
 	return SOPHON_OK;

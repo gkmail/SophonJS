@@ -51,14 +51,11 @@ static NUMBER_FUNC(call)
 		sophon_value_set_number(vm, retv, d);
 	} else {
 		Sophon_Object *obj;
-		Sophon_Value dv;
 
-		sophon_value_set_number(vm, &dv, d);
-		r = sophon_value_to_object(vm, dv, &obj);
-		if (r != SOPHON_OK)
+		if ((r = sophon_value_to_object(vm, thisv, &obj)) != SOPHON_OK)
 			return r;
 
-		sophon_value_set_object(vm, retv, obj);
+		sophon_value_set_number(vm, &obj->primv, d);
 	}
 
 	return SOPHON_OK;
@@ -236,7 +233,7 @@ static const Sophon_Decl
 number_object_props[] = {
 	SOPHON_OBJECT_PROP(prototype, 0, number_prototype_props),
 	SOPHON_FUNCTION_PROP([Call], GLOBAL_ATTRS, number_call_func, 1),
-	SOPHON_DOUBLE_PROP(MAX_VALUE, 0, 1.7976931348623147e+308),
+	SOPHON_DOUBLE_PROP(MAX_VALUE, 0, 1.7976931348623157e+308),
 	SOPHON_DOUBLE_PROP(MIN_VALUE, 0, 5e-324),
 	SOPHON_DOUBLE_PROP(NaN, 0, SOPHON_NAN),
 	SOPHON_DOUBLE_PROP(NEGATIVE_INFINITY, 0, -SOPHON_INFINITY),

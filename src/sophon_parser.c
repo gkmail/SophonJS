@@ -882,10 +882,6 @@ parser_add_var (Sophon_VM *vm, Sophon_Location *loc, Sophon_String *name)
 	Sophon_ParserData *p = (Sophon_ParserData*)vm->parser_data;
 	Sophon_Function *func;
 	Sophon_Result r;
-#if 0
-	char *cstr;
-	Sophon_U32 len;
-#endif
 
 	func = FUNC(0)->func;
 
@@ -906,19 +902,12 @@ parser_add_var (Sophon_VM *vm, Sophon_Location *loc, Sophon_String *name)
 		if (r == SOPHON_OK)
 			return r;
 	} else {
-		r = sophon_function_add_var(vm, func, SOPHON_FUNC_VAR, name);
-		if (r == SOPHON_OK)
+		r = sophon_function_add_var(vm, func, SOPHON_FUNC_VAR, name, 0);
+		if (r < 0)
 			return r;
 	}
 
 redef:
-#if 0
-	if (sophon_string_new_utf8_cstr(vm, name, &cstr, &len) >= 0) {
-		parser_error(vm, PARSER_WARNING, loc,
-					"variant \"%s\" has already been defined", cstr);
-		sophon_string_free_utf8_cstr(vm, cstr, len);
-	}
-#endif
 	return SOPHON_OK;
 }
 
@@ -1712,7 +1701,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 
 			func = FUNC(0)->func;
 			str = (Sophon_String*)SOPHON_VALUE_GET_GC(V(3).v);
-			sophon_function_add_var(vm, func, SOPHON_FUNC_ARG, str);
+			sophon_function_add_var(vm, func, SOPHON_FUNC_ARG, str, 0);
 			FUNC(0)->func->flags |= FUNC_FL_BEGIN;
 			break;
 		}
@@ -2133,7 +2122,7 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 			if (!EXPR_IS_REF(&V(1).expr)) {
 				EXPR_TO_VALUE(&V(1).expr);
 				APPEND(vm, &V(1).expr.base_ops, L(0).first_line,
-							OP_pop, 1, OP_true);
+							OP_pop, 1, OP_true, -1);
 				*v = V(1);
 				return SOPHON_OK;
 			}
@@ -2205,7 +2194,8 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 				return SOPHON_ERR_PARSE;
 			}
 
-			r = sophon_function_add_var(vm, func, SOPHON_FUNC_ARG, name);
+			r = sophon_function_add_var(vm, func, SOPHON_FUNC_ARG, name,
+						strict ? 0 : SOPHON_FL_FORCE);
 			if (r == SOPHON_NONE) {		
 				if (sophon_string_new_utf8_cstr(vm, name, &buf, &len) >= 0) {
 					sophon_parser_error(vm,
@@ -2256,8 +2246,6 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 			func  = FUNC(0);
 			frame = FRAME(1);
 			
-			parser_add_var(vm, &L(1), func->func->name);
-
 			id = ADD_CONST(SOPHON_VALUE_GC(func->func->name));
 			v->ops = NULL;
 
@@ -2266,6 +2254,8 @@ parser_reduce (Sophon_VM *vm, Sophon_U16 rid, Sophon_Int pop,
 			r = parser_pop_func(vm, &V(8).ops);
 			if (r != SOPHON_OK)
 				return r;
+
+			parser_add_var(vm, &L(1), func->func->name);
 			break;
 		}
 		case R_FUNC_EXPR: {
@@ -2775,9 +2765,9 @@ sophon_parse (Sophon_VM *vm, Sophon_Module *mod, Sophon_Encoding enc,
 				if (vm->stack->func->flags & SOPHON_FUNC_FL_STRICT)
 					func_flags |= SOPHON_FUNC_FL_STRICT;
 			}
-		} else {
-			func_flags |= SOPHON_FUNC_FL_GLOBAL;
 		}
+		
+		func_flags |= SOPHON_FUNC_FL_GLOBAL;
 
 		if (flags & SOPHON_PARSER_FL_STRICT)
 			func_flags |= SOPHON_FUNC_FL_STRICT;
@@ -2862,7 +2852,8 @@ sophon_eval (Sophon_VM *vm, Sophon_Encoding enc, Sophon_IOFunc input,
 	r = sophon_parse(vm, mod, enc, input, data, flags|SOPHON_PARSER_FL_EVAL);
 	if (r == SOPHON_OK) {
 		r = sophon_value_call(vm, mod->globv, SOPHON_VALUE_UNDEFINED, NULL,
-				0, retv, 0);
+				0, retv,
+				(flags & SOPHON_PARSER_FL_INDIRECT) ? SOPHON_FL_INDIRECT : 0);
 	}
 
 	sophon_gc_set_nb_count(vm, gc_level);

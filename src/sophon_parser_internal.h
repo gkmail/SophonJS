@@ -91,8 +91,8 @@ extern "C" {
 	o(pop_frame,  Op,    0)\
 	o(for_in,     Jump,  1)/*50*/\
 	o(for_next,   Op,    0)\
-	o(try_begin,  Jump,  2)\
-	o(try_end,    Jump, -2)\
+	o(try_begin,  Jump,  3)\
+	o(try_end,    Jump, -3)\
 	o(prop_set,   Op,  -2)\
 	o(prop_get,   Op,  -2)\
 	o(dup,        StackOp,  1)\

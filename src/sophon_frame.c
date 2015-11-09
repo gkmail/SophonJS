@@ -69,7 +69,7 @@ sophon_decl_global_frame_create (Sophon_VM *vm, Sophon_U8 gc_type,
 		r = sophon_value_to_closure(vm, calleev, &clos);
 		SOPHON_ASSERT(r == SOPHON_OK);
 		SOPHON_ASSERT(!(clos->gc_flags & SOPHON_GC_FL_BIND));
-		r= r;
+		r = r;
 
 		func  = clos->c.func.func;
 		argc  = SOPHON_MAX(real_argc, func->argc);
@@ -224,7 +224,7 @@ sophon_decl_frame_add_binding (Sophon_VM *vm, Sophon_DeclFrame *frame,
 				SOPHON_VALUE_GC(name),
 				SOPHON_VALUE_UNDEFINED,
 				SOPHON_VALUE_UNDEFINED,
-				SOPHON_DATA_PROP_ATTR,
+				SOPHON_PROP_ATTR_WRITABLE|SOPHON_PROP_ATTR_ENUMERABLE,
 				SOPHON_FL_DATA_PROP);
 	} else {
 		r = sophon_hash_add(vm, &frame->var_hash,

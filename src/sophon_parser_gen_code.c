@@ -133,7 +133,8 @@ parser_gen_code (Sophon_VM *vm, Sophon_Function *func, Sophon_ParserOp **ops)
 				case OP_put_fbind:
 				case OP_get_bind: {
 					Sophon_ParserBind *bind = (Sophon_ParserBind*)op;
-					Sophon_Bool put = (op->type == OP_put_bind);
+					Sophon_Bool put = ((op->type == OP_put_bind) ||
+								(op->type == OP_put_fbind));
 					Sophon_Int var_id = 0;
 					Sophon_Int s;
 
@@ -152,7 +153,7 @@ parser_gen_code (Sophon_VM *vm, Sophon_Function *func, Sophon_ParserOp **ops)
 							break;
 						}
 					}
-					
+				
 					/*Search the binding in the function variant hash table*/
 					if (var_id != -1)
 						var_id = func_lookup_var(vm, func, bind->name_id);
@@ -379,7 +380,8 @@ calc_end:
 					case OP_put_fbind:
 					case OP_get_bind: {
 						Sophon_ParserBind *bind = (Sophon_ParserBind*)op;
-						Sophon_Bool put = (op->type == OP_put_bind);
+						Sophon_Bool put = ((op->type == OP_put_bind) ||
+									(op->type == OP_put_fbind));
 
 						if (bind->var_id == 0xFFFF) {
 							if (op->type == OP_put_bind) {

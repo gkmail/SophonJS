@@ -14,7 +14,26 @@ var ignore = [
 "TestCases/ch08/8.5/S8.5_A11_T1.js",
 "TestCases/ch08/8.5/S8.5_A13_T2.js",
 "TestCases/ch08/8.5/S8.5_A2.1.js",
-"TestCases/ch08/8.5/S8.5_A2.2.js"
+"TestCases/ch08/8.5/S8.5_A2.2.js",
+"TestCases/ch09/9.3/S9.3_A4.1_T1.js",
+"TestCases/ch09/9.3/S9.3_A4.1_T2.js",
+"TestCases/ch09/9.3/S9.3_A4.2_T1.js",
+"TestCases/ch09/9.3/S9.3_A4.2_T2.js",
+"TestCases/ch09/9.3/9.3.1/S9.3.1_A2.js",
+"TestCases/ch09/9.3/9.3.1/S9.3.1_A3_T1.js",
+"TestCases/ch09/9.3/9.3.1/S9.3.1_A3_T2.js",
+"TestCases/ch09/9.3/9.3.1/S9.3.1_A4_T1.js",
+"TestCases/ch09/9.3/9.3.1/S9.3.1_A4_T2.js",
+"TestCases/ch09/9.3/9.3.1/S9.3.1_A5_T1.js",
+"TestCases/ch09/9.3/9.3.1/S9.3.1_A5_T3.js",
+"TestCases/ch09/9.3/9.3.1/S9.3.1_A6_T1.js",
+"TestCases/ch09/9.3/9.3.1/S9.3.1_A6_T2.js",
+"TestCases/ch09/9.8/9.8.1/S9.8.1_A10.js",
+"TestCases/ch09/9.8/9.8.1/S9.8.1_A7.js",
+"TestCases/ch09/9.8/9.8.1/S9.8.1_A8.js",
+"TestCases/ch09/9.8/9.8.1/S9.8.1_A9_T1.js",
+"TestCases/ch09/9.8/9.8.1/S9.8.1_A9_T2.js",
+"TestCases/ch09/9.9/S9.9_A4.js"
 ];
 
 function myRunTest(test)
@@ -24,8 +43,8 @@ function myRunTest(test)
 	if (ignore.indexOf(test.path) != -1)
 		return;
 
-	if (test.path!="TestCases/ch09/9.2/S9.2_A6_T1.js")
-		return;
+	//if (test.path!="TestCases/ch10/10.1/S10.1.7_A1_T1.js")
+	//	return;
 
 	myTestException = runTest(test.code);
 

@@ -35,6 +35,7 @@
 #include <sophon_vm.h>
 #include <sophon_module.h>
 #include <sophon_function.h>
+#include <sophon_string.h>
 #include <sophon_debug.h>
 
 Sophon_Module*
@@ -176,6 +177,17 @@ sophon_module_add_const (Sophon_VM *vm, Sophon_Module *mod, Sophon_Value v)
 		id = mod->const_count;
 		ent->value = (Sophon_Ptr)(Sophon_IntPtr)id;
 	} else if (r == SOPHON_NONE) {
+		if (SOPHON_VALUE_IS_STRING(v)) {
+			Sophon_String *str = SOPHON_VALUE_GET_STRING(v);
+
+			if (str->gc_flags & SOPHON_GC_FL_INTERN) {
+				id = (Sophon_IntPtr)ent->value;
+
+				ent->key = (Sophon_Ptr)v;
+				mod->consts[id] = v;
+			}
+		}
+
 		id = (Sophon_IntPtr)ent->value;
 	} else {
 		id = -1;

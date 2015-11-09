@@ -556,12 +556,14 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 #define I_for_next_run\
 	return SOPHON_OK;
 #define I_try_begin_run\
-	sophon_value_set_int(vm, &STACK(-2), TP);\
-	sophon_value_set_int(vm, &STACK(-1), pos);\
+	sophon_value_set_int(vm, &STACK(-3), TP);\
+	sophon_value_set_int(vm, &STACK(-2), pos);\
+	sophon_value_set_cptr(vm, &STACK(-1), TOP->lex_env);\
 	TP = SP;
 #define I_try_end_run\
 	TP = SOPHON_VALUE_GET_INT(STACK(0));\
-	SP -= 2;\
+	TOP->lex_env = SOPHON_VALUE_GET_CPTR(STACK(2));\
+	SP -= 3;\
 	IP = pos;\
 	break;
 #define I_prop_set_run\
@@ -612,7 +614,7 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 	Sophon_String *name = SOPHON_VALUE_GET_STRING(CONST(id));\
 	r = sophon_stack_get_binding(vm, name, &STACK(-1), 0);\
 	if (r == SOPHON_NONE) {\
-		sophon_throw(vm, vm->ReferenceError, "binding has not been defined");\
+		sophon_throw(vm, vm->ReferenceError, "Binding has not been defined");\
 		THROW;\
 	} else if (r != SOPHON_OK) {\
 		THROW;\
@@ -744,8 +746,9 @@ exception:
 			return ret;
 
 		SP = TP;
-		TP = SOPHON_VALUE_GET_INT(STACK(-2));
-		IP = SOPHON_VALUE_GET_INT(STACK(-1));
+		TP = SOPHON_VALUE_GET_INT(STACK(-3));
+		IP = SOPHON_VALUE_GET_INT(STACK(-2));
+		TOP->lex_env = SOPHON_VALUE_GET_CPTR(STACK(-1));
 		if (ret < 0)
 			ret = SOPHON_NONE;
 		goto again;

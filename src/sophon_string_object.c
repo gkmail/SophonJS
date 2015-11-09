@@ -88,11 +88,10 @@ static STRING_FUNC(call)
 	} else {
 		Sophon_Object *obj;
 
-		if ((r = sophon_value_to_object(vm, SOPHON_VALUE_GC(str), &obj))
-					!= SOPHON_OK)
+		if ((r = sophon_value_to_object(vm, thisv, &obj)) != SOPHON_OK)
 			return r;
 
-		sophon_value_set_object(vm, retv, obj);
+		sophon_value_set_string(vm, &obj->primv, str);
 	}
 
 	return SOPHON_OK;

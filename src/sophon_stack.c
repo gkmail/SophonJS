@@ -82,7 +82,7 @@ sophon_stack_push_global (Sophon_VM *vm, Sophon_Value globv,
 	Sophon_Result r;
 
 	SOPHON_ASSERT(vm);
-	
+
 	if (SOPHON_VALUE_IS_UNDEFINED(calleev)) {
 		func  = NULL;
 		ssize = 0;
@@ -520,8 +520,8 @@ sophon_stack_put_binding (Sophon_VM *vm, Sophon_String *name,
 					Sophon_Module *mod;
 					Sophon_U32 fl;
 					
-					if (sophon_strict(vm) && !(flags & SOPHON_FL_FORCE))
-						fl = SOPHON_FL_NONE;
+					if (strict && !(flags & SOPHON_FL_FORCE))
+						fl = SOPHON_FL_NONE|SOPHON_FL_THROW;
 					else
 						fl = 0;
 

@@ -81,6 +81,8 @@ extern "C" {
 #define SOPHON_FL_OWN               512
 /**\brief Force the operation*/
 #define SOPHON_FL_FORCE             1024
+/**\brief Indirect call*/
+#define SOPHON_FL_INDIRECT          2048
 
 /**\brief Default property attributes flags*/
 #define SOPHON_FL_DATA_PROP\

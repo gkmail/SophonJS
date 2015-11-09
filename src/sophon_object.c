@@ -640,6 +640,7 @@ sophon_value_get (Sophon_VM *vm, Sophon_Value thisv,
 		return r;
 
 	name = sophon_string_intern(vm, name);
+
 	while (1) {
 		if (obj->prop_count) {
 			Sophon_Property *prop;

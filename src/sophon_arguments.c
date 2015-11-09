@@ -48,7 +48,10 @@ sophon_arguments_create (Sophon_VM *vm, Sophon_DeclFrame *frame)
 
 	arr = sophon_array_create(vm);
 
-	cap = SOPHON_MAX(frame->argc, frame->func->argc);
+	cap = frame->argc;
+	if (frame->func)
+		cap = SOPHON_MAX(cap, frame->func->argc);
+
 	len = frame->argc;
 
 	if (sophon_strict(vm)) {

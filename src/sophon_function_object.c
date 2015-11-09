@@ -68,11 +68,6 @@ static FUNCTION_FUNC(constructor)
 	Sophon_Bool strict = sophon_strict(vm);
 	BufInputData inp;
 
-	if (argc < 1) {
-		sophon_throw(vm, vm->SyntaxError, "No argument");
-		return SOPHON_ERR_THROW;
-	}
-
 	mod = sophon_module_create(vm);
 	func_id = sophon_module_add_func(vm, mod, NULL, 0);
 	SOPHON_ASSERT(func_id == 0);
@@ -84,7 +79,8 @@ static FUNCTION_FUNC(constructor)
 			return r;
 
 		str = sophon_string_intern(vm, str);
-		r = sophon_function_add_var(vm, func, SOPHON_FUNC_ARG, str);
+		r = sophon_function_add_var(vm, func, SOPHON_FUNC_ARG, str,
+					strict ? 0 : SOPHON_FL_FORCE);
 		if ((r == SOPHON_NONE) && strict) {
 			sophon_throw(vm, vm->SyntaxError,
 					"Argument has already been defined");
@@ -92,13 +88,19 @@ static FUNCTION_FUNC(constructor)
 		}
 	}
 
-	r = sophon_value_to_string(vm, SOPHON_ARG(argc - 1), &str);
-	if (r != SOPHON_OK)
-		return r;
+	if (argc > 0) {
+		r = sophon_value_to_string(vm, SOPHON_ARG(argc - 1), &str);
+		if (r != SOPHON_OK)
+			return r;
 
-	inp.chars = (Sophon_U8*)sophon_string_chars(vm, str);
-	inp.len   = sophon_string_length(vm, str) * sizeof(Sophon_Char);
-	inp.pos   = 0;
+		inp.chars = (Sophon_U8*)sophon_string_chars(vm, str);
+		inp.len   = sophon_string_length(vm, str) * sizeof(Sophon_Char);
+		inp.pos   = 0;
+	} else {
+		inp.chars = NULL;
+		inp.len   = 0;
+		inp.pos   = 0;
+	}
 
 	r = sophon_parse(vm, mod, SOPHON_ENC, buf_input_func, &inp,
 			SOPHON_PARSER_FL_BODY);
