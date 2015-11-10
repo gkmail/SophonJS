@@ -455,6 +455,8 @@ lex_get_str (Sophon_VM *vm, Sophon_TokenValue *val)
 							return SOPHON_ERR_LEX;
 						}
 
+						sophon_parser_octal_ext(vm);
+
 						l->tlen = len;
 						l->tbuf[len - 1] = n;
 						break;
@@ -740,6 +742,7 @@ lex_action (Sophon_VM *vm, Sophon_U16 action, Sophon_TokenValue *val)
 							"octal number is forbidden in strict mode");
 				return SOPHON_ERR_LEX;
 			}
+			sophon_parser_octal_ext(vm);
 		case A_OCT_NUM:
 			text = lex_text(vm);
 			if (!text)
@@ -1133,7 +1136,13 @@ retry:
 			}
 
 			if((sym == SOPHON_ERR_EOF) && (state == 0)) {
-				t = SOPHON_ERR_EOF;
+				if (l->cond == C_COMMENT_BLOCK) {
+					lex_error(vm, SOPHON_PARSER_ERROR,
+							"unterminated comment block");
+					t = SOPHON_ERR_LEX;
+				} else {
+					t = SOPHON_ERR_EOF;
+				}
 			} else {
 				lex_error(vm, SOPHON_PARSER_ERROR,
 							"illegal character");

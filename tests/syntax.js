@@ -272,7 +272,7 @@ function typeof_test()
 	}
 
 	test(void 0, "undefined");
-	test(null, "null");
+	test(null, "object");
 	test(true, "boolean");
 	test(false, "boolean");
 	test(1, "number");
@@ -775,14 +775,14 @@ function for_in_test()
 
 	r = 0;
 	for (v in a) {
-		r += v;
+		r += a[v];
 	}
 	if (r != 10)
 		fail();
 
 	r = 0;
 	for (v in a) {
-		if (v==3) {
+		if (a[v]==3) {
 			r = 1;
 			break;
 		}
@@ -792,9 +792,9 @@ function for_in_test()
 
 	r = 0;
 	for (v in a) {
-		if (v%2)
+		if (a[v]%2)
 			continue;
-		r += v;
+		r += a[v];
 	}
 	if (r != 6)
 		fail();
@@ -803,7 +803,7 @@ function for_in_test()
 
 	r = 0;
 	for (v in a) {
-		r += v;
+		r += a[v];
 	}
 	if (r != 55)
 		fail();
@@ -819,9 +819,9 @@ function for_in_test()
 
 	r = 0;
 	for (v in a) {
-		if (v % 2)
+		if (a[v] % 2)
 			continue;
-		r += v;
+		r += a[v];
 	}
 	if (r != 30)
 		fail();
@@ -838,8 +838,8 @@ function for_in_test()
 	};
 	r = 0;
 	for (v in a) {
-		for (i in v) {
-			r += i;
+		for (i in a[v]) {
+			r += a[v][i];
 		}
 	}
 	if (r != 45)
@@ -848,10 +848,10 @@ function for_in_test()
 	a=[[1,2,3,4],[5,6,7,8],[9,10,11,12]];
 	r = 0;
 outer: for (v in a) {
-		for (i in v) {
-			if (i % 2 == 0)
+		for (i in a[v]) {
+			if (a[v][i] % 2 == 0)
 				continue outer;
-			r += i;
+			r += a[v][i];
 		}
 	}
 	if (r != 15)
@@ -859,10 +859,10 @@ outer: for (v in a) {
 
 	r = 0;
 outer: for (v in a) {
-		for (i in v) {
-			if (i % 2 == 0)
+		for (i in a[v]) {
+			if (a[v][i] % 2 == 0)
 				break outer;
-			r += i;
+			r += a[v][i];
 		}
 	}
 	if (r != 1)

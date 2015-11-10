@@ -57,7 +57,6 @@ static void
 vm_init (Sophon_VM *vm)
 {
 	/*Initialize exception and return value*/
-	sophon_value_set_undefined(vm, &vm->retv);
 	sophon_value_set_undefined(vm, &vm->excepv);
 
 	/*Get error objects*/
@@ -130,7 +129,7 @@ sophon_vm_destroy(Sophon_VM *vm)
 #endif
 
 #ifdef SOPHON_MM_DEBUG
-	sophon_mm_check_all();
+	sophon_mm_check_all(vm);
 #endif
 
 	while (vm->stack) {
@@ -150,7 +149,7 @@ sophon_vm_destroy(Sophon_VM *vm)
 				vm->mm_curr_used));
 
 #ifdef SOPHON_MM_DEBUG
-	sophon_mm_dump_unfreed();
+	sophon_mm_dump_unfreed(vm);
 #endif
 
 	ptr = sophon_realloc(vm, 0);
@@ -162,7 +161,6 @@ sophon_vm_destroy(Sophon_VM *vm)
 void
 sophon_trace (Sophon_VM *vm)
 {
-	Sophon_DeclFrame *decl;
 	Sophon_Module *mod;
 	Sophon_Stack *stk;
 	Sophon_U32 level;
@@ -176,9 +174,7 @@ sophon_trace (Sophon_VM *vm)
 	level = 0;
 	stk = vm->stack;
 	while (stk) {
-		decl = (Sophon_DeclFrame*)stk->var_env;
-
-		if (decl->func) {
+		if (stk->func) {
 			if (first) {
 				sophon_prerr("stack:\n");
 				first = SOPHON_FALSE;
@@ -186,7 +182,7 @@ sophon_trace (Sophon_VM *vm)
 
 			sophon_prerr("\t%d: ", level);
 
-			mod = decl->func->module;
+			mod = stk->func->module;
 			if (mod->name) {
 				if (sophon_string_new_utf8_cstr(vm, mod->name,
 								&buf, &len) >= 0) {
@@ -195,19 +191,19 @@ sophon_trace (Sophon_VM *vm)
 				}
 			}
 
-			if (decl->func->name) {
-				if (sophon_string_new_utf8_cstr(vm, decl->func->name,
+			if (stk->func->name) {
+				if (sophon_string_new_utf8_cstr(vm, stk->func->name,
 								&buf, &len) >= 0) {
 					sophon_prerr("%s ", buf);
 					sophon_string_free_utf8_cstr(vm, buf, len);
 				}
-			} else if (decl->func->flags & SOPHON_FUNC_FL_EVAL) {
+			} else if (stk->func->flags & SOPHON_FUNC_FL_EVAL) {
 				sophon_prerr("[eval] ");
 			}
 
 #ifdef SOPHON_LINE_INFO
-			line = sophon_ins_get_line(vm, decl->func,
-						decl->func->f.ibuf + stk->ip);
+			line = sophon_ins_get_line(vm, stk->func,
+						stk->func->f.ibuf + stk->ip);
 			sophon_prerr("line: %d", line);
 #endif
 

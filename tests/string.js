@@ -304,8 +304,10 @@ function replace_test()
 	function test(str, re, rstr, r)
 	{
 		var rr = str.replace(re, rstr);
-		if (r != rr)
+		if (r != rr) {
+			console.log("\"%s\" \"%s\" %d", rr, r, rr==r);
 			fail();
+		}
 	}
 
 	test("sophon hello test", "hello", "js", "sophon js test");

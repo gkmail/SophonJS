@@ -300,6 +300,8 @@ Sophon_Int
 sophon_string_cmp (Sophon_VM *vm, Sophon_String *s1, Sophon_String *s2)
 {
 	Sophon_Char *cs1, *cs2;
+	Sophon_U32 l1, l2;
+	Sophon_Int r;
 
 	SOPHON_ASSERT(vm && s1 && s2);
 
@@ -308,14 +310,29 @@ sophon_string_cmp (Sophon_VM *vm, Sophon_String *s1, Sophon_String *s2)
 
 	cs1 = sophon_string_chars(vm, s1);
 	cs2 = sophon_string_chars(vm, s2);
+	l1  = sophon_string_length(vm, s1);
+	l2  = sophon_string_length(vm, s2);
 
-	return sophon_ucstrcmp(cs1, cs2);
+	while ((l1 > 0) && (l2 > 0)) {
+		r = *cs1 - *cs2;
+		if (r != 0)
+			return r;
+
+		cs1 ++;
+		cs2 ++;
+		l1 --;
+		l2 --;
+	}
+
+	return l1 - l2;
 }
 
 Sophon_Int
 sophon_string_casecmp (Sophon_VM *vm, Sophon_String *s1, Sophon_String *s2)
 {
 	Sophon_Char *cs1, *cs2;
+	Sophon_U32 l1, l2;
+	Sophon_Int r;
 
 	SOPHON_ASSERT(vm && s1 && s2);
 
@@ -324,8 +341,21 @@ sophon_string_casecmp (Sophon_VM *vm, Sophon_String *s1, Sophon_String *s2)
 
 	cs1 = sophon_string_chars(vm, s1);
 	cs2 = sophon_string_chars(vm, s2);
+	l1  = sophon_string_length(vm, s1);
+	l2  = sophon_string_length(vm, s2);
 
-	return sophon_ucstrcasecmp(cs1, cs2);
+	while ((l1 > 0) && (l2 > 0)) {
+		r = sophon_tolower(*cs1) - sophon_tolower(*cs2);
+		if (r != 0)
+			return r;
+
+		cs1 ++;
+		cs2 ++;
+		l1 --;
+		l2 --;
+	}
+
+	return l1 - l2;
 }
 
 Sophon_String*
@@ -366,13 +396,15 @@ sophon_string_escape (Sophon_VM *vm, Sophon_String *str)
 	Sophon_String *nstr;
 	Sophon_Char *cstr = sophon_string_chars(vm, str);
 	Sophon_U32 len = sophon_string_length(vm, str);
+	Sophon_U32 left;
 	Sophon_Char *buf, *src, *dst;
 	
 	buf = sophon_mm_alloc_ensure(vm, len * 6 * sizeof(Sophon_Char));
 	src = cstr;
 	dst = buf;
+	left = len;
 	
-	while (*src) {
+	while (left) {
 		if (*src == '\n') {
 			*dst++ = '\\';
 			*dst++ = 'n';
@@ -420,6 +452,7 @@ sophon_string_escape (Sophon_VM *vm, Sophon_String *str)
 		}
 
 		src++;
+		left--;
 	}
 	
 	nstr = sophon_string_from_chars(vm, buf, dst - buf);
@@ -445,45 +478,55 @@ sophon_string_unescape (Sophon_VM *vm, Sophon_String *str)
 	Sophon_String *nstr;
 	Sophon_Char *cstr = sophon_string_chars(vm, str);
 	Sophon_U32 len = sophon_string_length(vm, str);
+	Sophon_U32 left;
 	Sophon_Char *buf, *src, *dst;
 	Sophon_Result r = SOPHON_ERR_LEX;
 	
 	buf = sophon_mm_alloc_ensure(vm, len * sizeof(Sophon_Char));
 	src = cstr;
 	dst = buf;
+	left = len;
 	
-	while (*src) {
+	while (left) {
 		if (*src != '\\') {
 			*dst++ = *src++;
+			left--;
 		} else {
 			switch (src[1]) {
 				case 'n':
 					*dst++ = '\n';
 					src += 2;
+					left -= 2;
 					break;
 				case 'r':
 					*dst++ = '\r';
 					src += 2;
+					left -= 2;
 					break;
 				case 'v':
 					*dst++ = '\v';
 					src += 2;
+					left -= 2;
 					break;
 				case 'f':
 					*dst++ = '\f';
 					src += 2;
+					left -= 2;
 					break;
 				case 'b':
 					*dst++ = '\b';
 					src += 2;
+					left -= 2;
 					break;
 				case 't':
 					*dst++ = '\t';
 					src += 2;
+					left -= 2;
 					break;
 				case '0':
 					*dst++ = '\0';
 					src += 2;
+					left -= 2;
 					break;
 				case 'x':
 					if (!sophon_isxdigit(src[2]) ||
@@ -492,6 +535,7 @@ sophon_string_unescape (Sophon_VM *vm, Sophon_String *str)
 					*dst++ = (hex_val(src[2]) << 4) |
 								hex_val(src[3]);
 					src += 4;
+					left -= 4;
 					break;
 				case 'u':
 					if (!sophon_isxdigit(src[2]) ||
@@ -504,11 +548,13 @@ sophon_string_unescape (Sophon_VM *vm, Sophon_String *str)
 								(hex_val(src[4]) << 4) |
 								hex_val(src[5]);
 					src += 6;
+					left -= 6;
 					break;
 				default:
-					if (src[1]) {
+					if (sophon_isprint(src[1])) {
 						*dst++ = src[1];
 						src += 2;
+						left -= 2;
 					} else {
 						goto end;
 					}
@@ -536,9 +582,13 @@ Sophon_Result
 sophon_string_get_item (Sophon_VM *vm, Sophon_String *str,
 			Sophon_U32 id, Sophon_Value *retv)
 {
+	Sophon_U32 len;
+
 	SOPHON_ASSERT(vm && str && retv);
 
-	if (id < str->length) {
+	len = sophon_string_length(vm, str);
+
+	if (id < len) {
 		Sophon_String *sub;
 
 		sub = sophon_string_from_chars(vm, str->chars + id, 1);

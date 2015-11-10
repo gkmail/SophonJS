@@ -68,12 +68,9 @@ static FUNCTION_FUNC(constructor)
 	Sophon_Bool strict = sophon_strict(vm);
 	BufInputData inp;
 
-	if (argc < 1) {
-		sophon_throw(vm, vm->SyntaxError, "No argument");
-		return SOPHON_ERR_THROW;
-	}
-
 	mod = sophon_module_create(vm);
+	mod->base = sophon_stack_get_module(vm);
+
 	func_id = sophon_module_add_func(vm, mod, NULL, 0);
 	SOPHON_ASSERT(func_id == 0);
 	func = sophon_module_get_func(mod, func_id);
@@ -84,7 +81,8 @@ static FUNCTION_FUNC(constructor)
 			return r;
 
 		str = sophon_string_intern(vm, str);
-		r = sophon_function_add_var(vm, func, SOPHON_FUNC_ARG, str);
+		r = sophon_function_add_var(vm, func, SOPHON_FUNC_ARG, str,
+					strict ? 0 : SOPHON_FL_FORCE);
 		if ((r == SOPHON_NONE) && strict) {
 			sophon_throw(vm, vm->SyntaxError,
 					"Argument has already been defined");
@@ -92,13 +90,19 @@ static FUNCTION_FUNC(constructor)
 		}
 	}
 
-	r = sophon_value_to_string(vm, SOPHON_ARG(argc - 1), &str);
-	if (r != SOPHON_OK)
-		return r;
+	if (argc > 0) {
+		r = sophon_value_to_string(vm, SOPHON_ARG(argc - 1), &str);
+		if (r != SOPHON_OK)
+			return r;
 
-	inp.chars = (Sophon_U8*)sophon_string_chars(vm, str);
-	inp.len   = sophon_string_length(vm, str) * sizeof(Sophon_Char);
-	inp.pos   = 0;
+		inp.chars = (Sophon_U8*)sophon_string_chars(vm, str);
+		inp.len   = sophon_string_length(vm, str) * sizeof(Sophon_Char);
+		inp.pos   = 0;
+	} else {
+		inp.chars = NULL;
+		inp.len   = 0;
+		inp.pos   = 0;
+	}
 
 	r = sophon_parse(vm, mod, SOPHON_ENC, buf_input_func, &inp,
 			SOPHON_PARSER_FL_BODY);
@@ -203,7 +207,7 @@ static FUNCTION_FUNC(caller_get)
 	while (stk) {
 		Sophon_DeclFrame *df = (Sophon_DeclFrame*)stk->var_env;
 		if (df->calleev == thisv) {
-			*retv = df->calleev;
+			*retv = df->callerv;
 			return SOPHON_OK;
 		}
 		stk = stk->bottom;
@@ -292,12 +296,15 @@ static FUNCTION_FUNC(apply)
 static FUNCTION_FUNC(call)
 {
 	Sophon_Value athisv = SOPHON_ARG(0);
-	Sophon_Value *aargv = &argv[1];
-	Sophon_Int aargc = argc - 1;
+	Sophon_Value *aargv;
+	Sophon_Int aargc;
 
-	if (aargc < 0) {
-		sophon_throw(vm, vm->RangeError, "No argument");
-		return SOPHON_ERR_THROW;
+	if (argc <= 1) {
+		aargv = NULL;
+		aargc = 0;
+	} else {
+		aargv = &argv[1];
+		aargc = argc - 1;
 	}
 
 	return sophon_value_call(vm, thisv, athisv, aargv, aargc, retv,
@@ -312,13 +319,8 @@ static FUNCTION_FUNC(bind)
 	Sophon_Int bargc = argc - 1;
 	Sophon_Result r;
 
-	if (bargc < 0) {
-		sophon_throw(vm, vm->RangeError, "No argument");
-		return SOPHON_ERR_THROW;
-	}
-
 	arr = sophon_array_create(vm);
-	if (bargc) {
+	if (bargc > 0) {
 		if ((r = sophon_array_set_length(vm, arr, bargc)) != SOPHON_OK) {
 			return r;
 		}

@@ -80,6 +80,7 @@ extern "C" {
 	o(get,   Op, -1)\
 	o(put,   Op, 0)\
 	o(call,  Call, -GET_PARAM(argc))/*40*/\
+	o(eval,  Call, -GET_PARAM(argc)+1)\
 	o(this_call,  Call, -GET_PARAM(argc)-1)\
 	o(jt,    Jump, -1)\
 	o(jf,    Jump, -1)\
@@ -88,23 +89,24 @@ extern "C" {
 	o(return,     Op,  -1)\
 	o(with,       Op,  -1)\
 	o(catch,      Const, 0)\
-	o(pop_frame,  Op,    0)\
-	o(for_in,     Jump,  1)/*50*/\
+	o(pop_frame,  Op,    0)/*50*/\
+	o(for_in,     Jump,  1)\
 	o(for_next,   Op,    0)\
-	o(try_begin,  Jump,  2)\
-	o(try_end,    Jump, -2)\
+	o(try_begin,  Jump,  3)\
+	o(try_end,    Jump, -3)\
 	o(prop_set,   Op,  -2)\
 	o(prop_get,   Op,  -2)\
 	o(dup,        StackOp,  1)\
 	o(mov,        StackOp,  0)\
 	o(pop,        StackOp,  -GET_PARAM(n))\
-	o(debugger,   Op,   0)
+	o(debugger,   Op,   0)/*60*/
 
 #define OP_ABSTRACT_BEGIN OP_get_bind
 
 #define FOR_EACH_ABSTRACT_OP(o)\
-	o(get_bind,   Bind, 1)/*60*/\
+	o(get_bind,   Bind, 1)\
 	o(put_bind,   Bind, 0)\
+	o(put_fbind,  Bind, 0)\
 	o(dup_ref, Ref, 1)\
 	o(mov_ref, Ref, 0)\
 	o(pop_ref, Ref, 0)\
@@ -112,8 +114,8 @@ extern "C" {
 	o(break,   LongJump, 0)\
 	o(continue,LongJump, 0)\
 	o(block_begin, Block, 0)\
-	o(block_end, Op, 0)\
-	o(anchor,  Anchor, 0)/*70*/\
+	o(block_end, Op, 0)/*70*/\
+	o(anchor,  Anchor, 0)\
 	o(stack,   StackOp, 0)
 
 #define FOR_EACH_OP(o) \

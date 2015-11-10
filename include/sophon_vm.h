@@ -165,6 +165,10 @@ struct Sophon_VM_s {
 	Sophon_U32 mm_curr_used;
 	Sophon_U32 mm_max_used;
 
+#ifdef SOPHON_MM_DEBUG
+	Sophon_Ptr mm_dbg_data;
+#endif
+
 	/*Number pool*/
 	Sophon_Hash         np_hash;
 	Sophon_NumberPool  *np_free_list;
@@ -206,9 +210,6 @@ struct Sophon_VM_s {
 	Sophon_Value      Arguments_protov;
 	Sophon_Value      RegExp_protov;
 	Sophon_Value      Date_protov;
-
-	/*Return value*/
-	Sophon_Value      retv;
 
 	/*Exception value*/
 	Sophon_Value      excepv;

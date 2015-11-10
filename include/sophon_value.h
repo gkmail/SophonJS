@@ -64,6 +64,11 @@ extern "C" {
 
 typedef Sophon_Int Sophon_ValueType;
 
+#define SOPHON_MAX_NORM   1.797693134862315708145274237317e+308
+#define SOPHON_MIN_NORM   2.2250738585072013830902327173324e-308
+#define SOPHON_MAX_DENORM 2.2250738585072008890245868760859e-308
+#define SOPHON_MIN_DENORM 4.9406564584124654417656879286822e-324
+
 /**\brief Property descriptor*/
 typedef struct {
 	Sophon_U8    attrs; /**< Attributes*/
@@ -188,7 +193,9 @@ typedef Sophon_Int (*Sophon_PropForEachFunc)(Sophon_VM *vm,
 /**\brief Set a JS number value*/
 #define sophon_value_set_number(vm, v, d) \
 	SOPHON_MACRO_BEGIN \
-		if ((d) == (Sophon_Number)(Sophon_Int)(d)) \
+		if (SOPHON_ABS(d) < SOPHON_MIN_DENORM)\
+			sophon_value_set_int(vm, v, 0); \
+		else if ((d) == (Sophon_Number)(Sophon_Int)(d)) \
 			sophon_value_set_int(vm, v, (Sophon_Int)(d)); \
 		else \
 			sophon_value_set_number_real(vm, v, d); \

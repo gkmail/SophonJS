@@ -88,11 +88,10 @@ static STRING_FUNC(call)
 	} else {
 		Sophon_Object *obj;
 
-		if ((r = sophon_value_to_object(vm, SOPHON_VALUE_GC(str), &obj))
-					!= SOPHON_OK)
+		if ((r = sophon_value_to_object(vm, thisv, &obj)) != SOPHON_OK)
 			return r;
 
-		sophon_value_set_object(vm, retv, obj);
+		sophon_value_set_string(vm, &obj->primv, str);
 	}
 
 	return SOPHON_OK;
@@ -639,9 +638,44 @@ rep_free (Sophon_VM *vm, RepData *rd)
 		sophon_mm_free(vm, rd->ibuf, sizeof(RepIns) * rd->icap);
 }
 
+static Sophon_String*
+rep_replace_func (Sophon_VM *vm, Sophon_Value func, Sophon_String *orig,
+		Sophon_ReMatch *match, Sophon_U32 size, Sophon_String *str)
+{
+	Sophon_Value rargv[size + 2];
+	Sophon_Value rr;
+	Sophon_String *tstr;
+	Sophon_Char *chars;
+	Sophon_U32 id;
+	Sophon_Result r;
+
+	chars = sophon_string_chars(vm, orig);
+
+	for (id = 0; id < size; id++) {
+		tstr = sophon_string_from_chars(vm, match[id].begin,
+					match[id].end - match[id].begin);
+		sophon_value_set_string(vm, &rargv[id], tstr);
+	}
+	
+	sophon_value_set_int(vm, &rargv[size], match[0].begin - chars);
+	sophon_value_set_string(vm, &rargv[size + 1], orig);
+
+	if ((r = sophon_value_call(vm, func, SOPHON_VALUE_UNDEFINED,
+						rargv, size + 2, &rr, 0)) != SOPHON_OK)
+		return NULL;
+
+	if ((r = sophon_value_to_string(vm, rr, &tstr)) != SOPHON_OK)
+		return NULL;
+	
+	str = sophon_string_concat(vm, str, tstr);
+
+	return str;
+}
+
 static STRING_FUNC(replace)
 {
 	Sophon_String *str, *sub_str, *rep_str, *rstr;
+	Sophon_Value rep_func;
 	Sophon_RegExp *re;
 	Sophon_Result r;
 	Sophon_Char *chars;
@@ -661,11 +695,18 @@ static STRING_FUNC(replace)
 	if ((r = sophon_value_to_string(vm, thisv, &str)) != SOPHON_OK)
 		return r;
 
-	if ((r = sophon_value_to_string(vm, SOPHON_ARG(1), &rep_str)) != SOPHON_OK)
-		return r;
+	if (sophon_value_is_closure(SOPHON_ARG(1))) {
+		rep_func = SOPHON_ARG(1);
+		rep_str  = NULL;
+	} else {
+		if ((r = sophon_value_to_string(vm, SOPHON_ARG(1), &rep_str)) != SOPHON_OK)
+			return r;
 
-	if ((r = rep_parse(vm, &rd, rep_str)) != SOPHON_OK)
-		return r;
+		if ((r = rep_parse(vm, &rd, rep_str)) != SOPHON_OK)
+			return r;
+
+		sophon_value_set_undefined(vm, &rep_func);
+	}
 
 	rstr = vm->empty_str;
 
@@ -700,7 +741,11 @@ static STRING_FUNC(replace)
 						sophon_string_from_chars(vm, chars, alen));
 		}
 	
-		rstr = rep_replace(vm, &rd, str, &match, 1, rstr);
+		if (rep_str) {
+			rstr = rep_replace(vm, &rd, str, &match, 1, rstr);
+		} else {
+			rstr = rep_replace_func(vm, rep_func, str, &match, 1, rstr);
+		}
 
 		alen = len - (mcstr - chars) - slen;
 		if (alen) {
@@ -747,12 +792,18 @@ static STRING_FUNC(replace)
 							chars + last, alen));
 			}
 
-			rstr = rep_replace(vm, &rd, str, match, mcnt, rstr);
+			if (rep_str) {
+				rstr = rep_replace(vm, &rd, str, match, mcnt, rstr);
+			} else {
+				rstr = rep_replace_func(vm, rep_func, str, match, mcnt, rstr);
+			}
+
 			last = match[0].end - chars;
 			if (last == re->last) {
-				rstr = sophon_string_concat(vm, rstr,
-							sophon_string_from_chars(vm,
-								chars + last, 1));
+				if (last < len)
+					rstr = sophon_string_concat(vm, rstr,
+								sophon_string_from_chars(vm,
+									chars + last, 1));
 				re->last++;
 			} else {
 				re->last = last;
@@ -770,7 +821,8 @@ static STRING_FUNC(replace)
 	}
 
 end:
-	rep_free(vm, &rd);
+	if (rep_str)
+		rep_free(vm, &rd);
 
 	if (r == SOPHON_OK)
 		sophon_value_set_string(vm, retv, rstr);

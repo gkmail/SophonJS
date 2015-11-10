@@ -46,6 +46,9 @@ gc_scan_module (Sophon_VM *vm, Sophon_Module *mod)
 	if (mod->name)
 		gc_mark(vm, (Sophon_GCObject*)mod->name);
 
+	if (mod->base)
+		gc_mark(vm, (Sophon_GCObject*)mod->base);
+
 	sophon_value_mark(vm, mod->globv);
 
 	sophon_hash_for_each(vm, &mod->const_hash, gc_mark_value_key, NULL);

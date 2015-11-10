@@ -41,14 +41,6 @@ extern "C" {
 #include "sophon_gc.h"
 #include "sophon_hash.h"
 
-/**\brief Frame type*/
-typedef enum {
-	SOPHON_FRAME_GLOBAL, /**< Global frame*/
-	SOPHON_FRAME_DECL,   /**< Declaration frame*/
-	SOPHON_FRAME_NAME,   /**< A named value block*/
-	SOPHON_FRAME_WITH    /**< With block*/
-} Sophon_FrameType;
-
 /**\brief Stack frame*/
 struct Sophon_Frame_s {
 	SOPHON_GC_HEADER

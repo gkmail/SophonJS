@@ -48,7 +48,10 @@ sophon_arguments_create (Sophon_VM *vm, Sophon_DeclFrame *frame)
 
 	arr = sophon_array_create(vm);
 
-	cap = SOPHON_MAX(frame->argc, frame->func->argc);
+	cap = frame->argc;
+	if (frame->func)
+		cap = SOPHON_MAX(cap, frame->func->argc);
+
 	len = frame->argc;
 
 	if (sophon_strict(vm)) {
@@ -58,6 +61,8 @@ sophon_arguments_create (Sophon_VM *vm, Sophon_DeclFrame *frame)
 						len * sizeof (Sophon_Value));
 		}
 	} else {
+		sophon_gc_add(vm, (Sophon_GCObject*)frame);
+
 		arr->v   = frame->v + frame->varc;
 		arr->len = len;
 		arr->cap = cap;
@@ -70,10 +75,19 @@ sophon_arguments_create (Sophon_VM *vm, Sophon_DeclFrame *frame)
 	if (!sophon_strict(vm)) {
 		sophon_value_define_prop(vm, argsv, SOPHON_VALUE_GC(vm->caller_str),
 					frame->callerv, SOPHON_VALUE_UNDEFINED,
-					0, SOPHON_FL_HAVE_VALUE);
+					SOPHON_PROP_ATTR_CONFIGURABLE|
+					SOPHON_PROP_ATTR_WRITABLE,
+					SOPHON_FL_HAVE_VALUE|
+					SOPHON_FL_HAVE_CONFIGURABLE|
+					SOPHON_FL_HAVE_WRITABLE);
+
 		sophon_value_define_prop(vm, argsv, SOPHON_VALUE_GC(vm->callee_str),
 					frame->calleev, SOPHON_VALUE_UNDEFINED,
-					0, SOPHON_FL_HAVE_VALUE);
+					SOPHON_PROP_ATTR_CONFIGURABLE|
+					SOPHON_PROP_ATTR_WRITABLE,
+					SOPHON_FL_HAVE_VALUE|
+					SOPHON_FL_HAVE_CONFIGURABLE|
+					SOPHON_FL_HAVE_WRITABLE);
 	}
 
 	obj->protov = vm->Arguments_protov;

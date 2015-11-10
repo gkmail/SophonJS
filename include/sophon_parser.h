@@ -55,6 +55,8 @@ extern "C" {
 #define SOPHON_PARSER_FL_ERROR          64
 /**\brief Disable warning message*/
 #define SOPHON_PARSER_FL_NO_WARNING     128
+/**\brief Indirect call*/
+#define SOPHON_PARSER_FL_INDIRECT       256
 
 #define sophon_parser_init(vm)  ((vm)->parser_data = NULL)
 #define sophon_parser_deinit(vm)
@@ -71,6 +73,12 @@ enum {
  * \return If parser is in strict mode
  */
 extern Sophon_Bool  sophon_parser_strict_mode (Sophon_VM *vm);
+
+/**
+ * \brief Set octal extension flag
+ * \param[in] vm The current virtual machine
+ */
+extern void         sophon_parser_octal_ext (Sophon_VM *vm);
 
 /**
  * \brief Parse the input
@@ -129,6 +137,20 @@ extern Sophon_Result sophon_eval (Sophon_VM *vm,
 						Sophon_Ptr data,
 						Sophon_U32 flags,
 						Sophon_Value *retv);
+
+/**
+ * \brief Parse the input and run the instructions
+ * \param[in] vm The current virtual machine
+ * \param inpv The input string value
+ * \param[out] retv The return value
+ * \param flags Parser flags
+ * \retval SOPHON_OK On success
+ * \retval <0 On error
+ */
+extern Sophon_Result sophon_eval_string(Sophon_VM *vm,
+						Sophon_Value inpv,
+						Sophon_Value *retv,
+						Sophon_U32 flags);
 
 #ifdef __cplusplus
 }

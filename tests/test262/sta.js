@@ -427,7 +427,7 @@ var $LocalTZ,
 
     var juneDate = new Date(2000, 5, 20, 0, 0, 0, 0);
     var decemberDate = new Date(2000, 11, 20, 0, 0, 0, 0);
-    var juneOffset = juneDate.getTimezoneOffset();
+	var juneOffset = juneDate.getTimezoneOffset();
     var decemberOffset = decemberDate.getTimezoneOffset();
     var isSouthernHemisphere = (juneOffset > decemberOffset);
     var winterTime = isSouthernHemisphere ? juneDate : decemberDate;

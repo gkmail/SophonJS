@@ -78,24 +78,40 @@ str_input (Sophon_Ptr data, Sophon_U8 *buf, Sophon_Int size)
 }
 
 #ifdef SOPHON_EVAL_FUNC
-static GLOBAL_FUNC(eval)
+
+Sophon_Result
+sophon_eval_string(Sophon_VM *vm, Sophon_Value inpv, Sophon_Value *retv,
+			Sophon_U32 flags)
 {
 	StrInputParams params;
-	Sophon_Value v = SOPHON_ARG(0);
 	Sophon_String *str;
 
-	if (!sophon_value_is_string(v)) {
-		*retv = v;
+	if (!sophon_value_is_string(inpv)) {
+		*retv = inpv;
 		return SOPHON_OK;
 	}
 
-	sophon_value_to_string(vm, v, &str);
+	sophon_value_to_string(vm, inpv, &str);
 
 	params.chars = sophon_string_chars(vm, str);
 	params.len   = sophon_string_length(vm, str);
 	params.off   = 0;
 
-	return sophon_eval(vm, SOPHON_ENC, str_input, &params, 0, retv);
+	return sophon_eval(vm, SOPHON_ENC, str_input, &params, flags,
+				retv);
+}
+
+static GLOBAL_FUNC(eval)
+{
+	return sophon_eval_string(vm, SOPHON_ARG(0), retv,
+				SOPHON_PARSER_FL_INDIRECT);
+}
+#else
+Sophon_Result
+sophon_eval_string(Sophon_VM *vm, Sophon_Value inpv, Sophon_Value *retv,
+			Sophon_U32 flags)
+{
+	return SOPHON_OK;
 }
 #endif
 
@@ -383,6 +399,9 @@ sophon_global_init (Sophon_VM *vm)
 				SOPHON_VALUE_GC(vm->prototype_str),
 				&vm->Function_protov, 0);
 
+	obj->protov  = vm->Function_protov;
+	fobj->protov = vm->Function_protov;
+
 	/*Load global object*/
 	glob = sophon_object_create(vm);
 	r = sophon_decl_load(vm, mod, glob, global_object_props);
@@ -407,7 +426,6 @@ sophon_global_init (Sophon_VM *vm)
 	load_prototype(vm, mod, vm->Boolean_str, &vm->Boolean_protov);
 	load_prototype(vm, mod, vm->Number_str, &vm->Number_protov);
 	load_prototype(vm, mod, vm->String_str, &vm->String_protov);
-	load_prototype(vm, mod, vm->Function_str, &vm->Function_protov);
 	load_prototype(vm, mod, vm->Array_str, &vm->Array_protov);
 	load_prototype(vm, mod, vm->RegExp_str, &vm->RegExp_protov);
 	load_prototype(vm, mod, vm->Date_str, &vm->Date_protov);

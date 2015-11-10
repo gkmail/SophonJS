@@ -187,15 +187,17 @@ static OBJECT_FUNC(call)
 	Sophon_Result r;
 
 	v = SOPHON_ARG(0);
-
-	if (sophon_value_is_null(v) || sophon_value_is_undefined(v)) {
-		obj = sophon_object_create(vm);
-	} else {
+	if (!sophon_value_is_null(v) && !sophon_value_is_undefined(v)) {
 		if ((r = sophon_value_to_object(vm, v, &obj)) != SOPHON_OK)
 			return r;
 	}
 
-	sophon_value_set_object(vm, retv, obj);
+	if (obj) {
+		sophon_value_set_object(vm, retv, obj);
+	} else if (sophon_value_is_undefined(thisv)) {
+		obj = sophon_object_create(vm);
+		sophon_value_set_object(vm, retv, obj);
+	}
 
 	return SOPHON_OK;
 }
@@ -572,10 +574,10 @@ static OBJECT_FUNC(valueOf)
 	if (SOPHON_VALUE_IS_OBJECT(thisv)) {
 		Sophon_Object *obj = SOPHON_VALUE_GET_OBJECT(thisv);
 
-		if (sophon_value_is_object(obj->primv))
-			*retv = thisv;
-		else
+		if (!sophon_value_is_undefined(obj->primv))
 			*retv = obj->primv;
+		else
+			*retv = thisv;
 	} else {
 		*retv = thisv;
 	}

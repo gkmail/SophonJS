@@ -35,11 +35,13 @@
 #include <sophon_vm.h>
 #include <sophon_function.h>
 #include <sophon_object.h>
+#include <sophon_string.h>
 #include <sophon_debug.h>
 
 Sophon_Result
 sophon_function_add_var (Sophon_VM *vm, Sophon_Function *func,
-			Sophon_FuncVarType type, Sophon_String *name)
+			Sophon_FuncVarType type, Sophon_String *name,
+			Sophon_U32 flags)
 {
 	Sophon_Result r;
 	Sophon_UIntPtr id;
@@ -52,7 +54,8 @@ sophon_function_add_var (Sophon_VM *vm, Sophon_Function *func,
 				sophon_direct_equal,
 				(Sophon_Ptr)name,
 				&ent);
-	if (r == SOPHON_OK) {
+	if ((r == SOPHON_OK) ||
+				((r == SOPHON_NONE) && (flags & SOPHON_FL_FORCE))) {
 		if (type == SOPHON_FUNC_VAR) {
 			id = func->varc++;
 		} else {

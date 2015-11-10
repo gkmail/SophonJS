@@ -38,20 +38,31 @@ extern "C" {
 
 #include "sophon_types.h"
 
+#ifdef SOPHON_MM_DEBUG
+	#define sophon_mm_dbg_init(vm)\
+		SOPHON_MACRO_BEGIN\
+			(vm)->mm_dbg_data  = NULL;\
+		SOPHON_MACRO_END
+#else
+	#define sophon_mm_dbg_init(vm)
+#endif
+
 #define sophon_mm_init(vm)\
 	SOPHON_MACRO_BEGIN\
 		(vm)->mm_curr_used = 0;\
 		(vm)->mm_max_used  = 0;\
+		sophon_mm_dbg_init(vm);\
 	SOPHON_MACRO_END
 
 #define sophon_mm_deinit(vm)
 
 #ifdef SOPHON_MM_DEBUG
-extern void       sophon_mm_dump_unfreed (void);
+extern void       sophon_mm_dump_unfreed (Sophon_VM *vm);
 
-extern void       sophon_mm_check_ptr (Sophon_Ptr ptr, Sophon_U32 size);
+extern void       sophon_mm_check_ptr (Sophon_VM *vm, Sophon_Ptr ptr,
+						Sophon_U32 size);
 
-extern void       sophon_mm_check_all (void);
+extern void       sophon_mm_check_all (Sophon_VM *vm);
 
 extern Sophon_Ptr sophon_mm_realloc_real (Sophon_VM *vm, Sophon_Ptr old_ptr,
 						Sophon_U32 old_size, Sophon_U32 new_size,

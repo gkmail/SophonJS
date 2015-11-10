@@ -98,13 +98,15 @@ struct Sophon_Function_s {
  * \param[in] func The function
  * \param type The variant type
  * \param name The variant name
+ * \param flags Invoke flags
  * \retval SOPHON_OK On success
  * \retval SOPHON_NONE The variant has already been defined
  */
 extern Sophon_Result       sophon_function_add_var (Sophon_VM *vm,
 							Sophon_Function *func,
 							Sophon_FuncVarType type,
-							Sophon_String *name);
+							Sophon_String *name,
+							Sophon_U32 flags);
 
 /**
  * \brief Lookup the variant from the function by its name

@@ -50,6 +50,8 @@ test_names[] = {
 };
 
 static Sophon_VM *vm;
+static Sophon_Result load (Sophon_VM *vm, const char *name);
+
 
 static Sophon_U8
 conv (Sophon_U8 c)
@@ -167,10 +169,68 @@ static SOPHON_FUNC(dump)
 	return SOPHON_OK;
 }
 
+static Sophon_Char *str_input_buf;
+static Sophon_U32   str_input_len;
+static Sophon_U32   str_input_pos;
+
+static Sophon_Int
+str_input_func (Sophon_Ptr date, Sophon_U8 *buf, Sophon_Int size)
+{
+	Sophon_Int cnt;
+
+	cnt = SOPHON_MIN(size,
+				(str_input_len - str_input_pos) * sizeof(Sophon_Char));
+	sophon_memcpy(buf, str_input_buf + str_input_pos, cnt);
+	str_input_pos += cnt / sizeof(Sophon_Char);
+
+	return cnt;
+}
+
+static SOPHON_FUNC(runTest)
+{
+	Sophon_VM *test_vm;
+	Sophon_String *str, *rstr;
+	Sophon_Value rv, ev;
+	Sophon_Result r;
+
+	test_vm = sophon_vm_create();
+
+	if ((r = load(test_vm, "sta")) != SOPHON_OK)
+		goto fail;
+
+	if ((r = sophon_value_to_string(vm, SOPHON_ARG(0), &str)) != SOPHON_OK)
+		goto fail;
+
+	str_input_buf = sophon_string_chars(vm, str);
+	str_input_len = sophon_string_length(vm, str);
+	str_input_pos = 0;
+
+	if ((r = sophon_eval(test_vm, SOPHON_ENC, str_input_func, NULL, 0, &rv))
+					!= SOPHON_OK) {
+		Sophon_Char *cstr;
+
+		sophon_catch(test_vm, &ev);
+		sophon_value_to_string(test_vm, ev, &rstr);
+
+		cstr = sophon_string_chars(test_vm, rstr);
+		rstr = sophon_string_create(vm, cstr);
+		sophon_value_set_string(vm, retv, rstr);
+	} else {
+		sophon_value_set_undefined(vm, retv);
+	}
+
+	sophon_vm_destroy(test_vm);
+	return SOPHON_OK;
+fail:
+	sophon_throw(vm, vm->Error, "Test failed");
+	return SOPHON_ERR_THROW;
+}
+
 static const Sophon_Decl
 decls[] = {
 	SOPHON_FUNCTION_PROP(decode, 0, decode, 1),
 	SOPHON_FUNCTION_PROP(dump, 0, dump, 1),
+	SOPHON_FUNCTION_PROP(runTest, 0, runTest, 1),
 	{NULL}
 };
 
@@ -200,7 +260,7 @@ run_json (Sophon_Value jsonv)
 }
 
 static Sophon_Result
-load (const char *name)
+load (Sophon_VM *vm, const char *name)
 {
 	char nbuf[256];
 	FILE *fp;
@@ -247,7 +307,6 @@ run_test (const char *name)
 	fclose(fp);
 
 	if (r == SOPHON_OK) {
-		printf("run test \"%s\"\n", name);
 		r = run_json(v);
 	}
 
@@ -263,9 +322,7 @@ main (int argc, char **args)
 	vm = sophon_vm_create();
 	sophon_decl_load(vm, NULL, NULL, decls);
 
-	if ((r = load("sta")) != SOPHON_OK)
-		goto end;
-	if ((r = load("main")) != SOPHON_OK)
+	if ((r = load(vm, "main")) != SOPHON_OK)
 		goto end;
 
 	pn = test_names;

@@ -197,16 +197,10 @@ function function_test()
 	if (o.p != 2)
 		fail();
 
-	Object.defineProperty(o,"p",{writable:false});
 	o.p=2;
-	r = 0;
-	try{
-		o.p=1;
-	}catch(e){
-		if (e instanceof TypeError)
-			r = 1;
-	}
-	if (r != 1)
+	Object.defineProperty(o,"p",{writable:false});
+	o.p=1;
+	if (o.p != 2)
 		fail();
 
 	o=Object();
@@ -216,14 +210,8 @@ function function_test()
 	Object.seal(o);
 	if (!Object.isSealed(o))
 		fail();
-	r = 0;
-	try{
-		o.p1=2;
-	}catch(e){
-		if (e instanceof TypeError)
-			r = 1;
-	}
-	if (r != 1)
+	o.p1=2;
+	if (o.p1 != undefined)
 		fail();
 	o.p=1978;
 	r = 0;
@@ -244,22 +232,11 @@ function function_test()
 	if (!Object.isFrozen(o))
 		fail();
 	r = 0;
-	try{
-		o.p1=2;
-	}catch(e){
-		if (e instanceof TypeError)
-			r = 1;
-	}
-	if (r != 1)
+	o.p1=2;
+	if (o.p1 != undefined)
 		fail();
-	r = 0;
-	try{
-		o.p=1978;
-	}catch(e){
-		if (e instanceof TypeError)
-			r = 1;
-	}
-	if (r != 1)
+	o.p=1978;
+	if (o.p != 1)
 		fail();
 	r = 0;
 	try{
@@ -280,14 +257,8 @@ function function_test()
 		fail();
 	o.p=1978;
 	Object.defineProperty(o,"p",{enumerable:false});
-	r = 0;
-	try {
-		o.p1=1;
-	}catch(e){
-		if (e instanceof TypeError)
-			r = 1;
-	}
-	if (r != 1)
+	o.p1=1;
+	if (o.p1 != undefined)
 		fail();
 
 	o = Object();

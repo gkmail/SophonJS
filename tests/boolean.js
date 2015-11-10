@@ -23,7 +23,7 @@ function constructor_test()
 	test_false(Boolean(null));
 	test_false(Boolean(undefined));
 	test_false(Boolean(""));
-	test_false(Boolean(new Boolean(false)));
+	test_true(Boolean(new Boolean(false)));
 	test_true(Boolean(true));
 	test_true(Boolean(1));
 	test_true(Boolean("s"));

@@ -34,6 +34,25 @@
 #define BOOLEAN_FUNC(name)\
 	SOPHON_FUNC(boolean_##name##_func)
 
+static Sophon_Bool
+this_to_bool (Sophon_VM *vm, Sophon_Value v)
+{
+	Sophon_Bool b;
+
+	if (SOPHON_VALUE_IS_BOOL(v)) {
+		b = SOPHON_VALUE_GET_BOOL(v);
+	} else if (SOPHON_VALUE_IS_OBJECT(v)) {
+		Sophon_Object *obj;
+
+		obj = SOPHON_VALUE_GET_OBJECT(v);
+		b = SOPHON_VALUE_GET_BOOL(obj->primv);
+	} else {
+		b = SOPHON_TRUE;
+	}
+
+	return b;
+}
+
 static BOOLEAN_FUNC(call)
 {
 	Sophon_Value v = SOPHON_ARG(0);
@@ -46,8 +65,8 @@ static BOOLEAN_FUNC(call)
 	} else {
 		Sophon_Object *obj;
 
-		sophon_value_to_object(vm, SOPHON_VALUE_BOOL(b), &obj);
-		sophon_value_set_object(vm, retv, obj);
+		sophon_value_to_object(vm, thisv, &obj);
+		sophon_value_set_bool(vm, &obj->primv, b);
 	}
 
 	return SOPHON_OK;
@@ -63,7 +82,8 @@ static BOOLEAN_FUNC(toString)
 		return SOPHON_ERR_THROW;
 	}
 
-	b = sophon_value_to_bool(vm, thisv);
+	b = this_to_bool(vm, thisv);
+
 	str = b ? vm->true_str : vm->false_str;
 
 	sophon_value_set_string(vm, retv, str);
@@ -80,7 +100,7 @@ static BOOLEAN_FUNC(valueOf)
 		return SOPHON_ERR_THROW;
 	}
 
-	b = sophon_value_to_bool(vm, thisv);
+	b = this_to_bool(vm, thisv);
 
 	sophon_value_set_bool(vm, retv, b);
 

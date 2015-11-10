@@ -59,6 +59,8 @@ stack_alloc (Sophon_VM *vm, Sophon_Int vsize)
 	stk->sp = 0;
 	stk->tp = 0xFFFF;
 
+	sophon_value_set_undefined(vm, &stk->retv);
+
 	stk->bottom = vm->stack;
 	vm->stack = stk;
 
@@ -80,7 +82,7 @@ sophon_stack_push_global (Sophon_VM *vm, Sophon_Value globv,
 	Sophon_Result r;
 
 	SOPHON_ASSERT(vm);
-	
+
 	if (SOPHON_VALUE_IS_UNDEFINED(calleev)) {
 		func  = NULL;
 		ssize = 0;
@@ -114,7 +116,8 @@ sophon_stack_push_global (Sophon_VM *vm, Sophon_Value globv,
 
 Sophon_Result
 sophon_stack_push_decl (Sophon_VM *vm, Sophon_Value thisv,
-			Sophon_Value calleev, Sophon_Value *argv, Sophon_U8 argc)
+			Sophon_Value calleev, Sophon_Value *argv, Sophon_U8 argc,
+			Sophon_U32 flags)
 {
 	Sophon_Stack *stk, *bottom;
 	Sophon_Frame *var_frame, *lex_frame;
@@ -124,7 +127,7 @@ sophon_stack_push_decl (Sophon_VM *vm, Sophon_Value thisv,
 	Sophon_Result r;
 
 	SOPHON_ASSERT(vm);
-	
+
 	r = sophon_value_to_closure(vm, calleev, &clos);
 	SOPHON_ASSERT(r == SOPHON_OK);
 	SOPHON_ASSERT(!(clos->gc_flags & SOPHON_GC_FL_BIND));
@@ -142,9 +145,32 @@ sophon_stack_push_decl (Sophon_VM *vm, Sophon_Value thisv,
 
 	if ((func->flags & SOPHON_FUNC_FL_EVAL) &&
 				!(func->flags & SOPHON_FUNC_FL_STRICT)) {
-		var_frame = bottom->var_env;
-		lex_frame = bottom->lex_env;
+		if (flags & SOPHON_FL_INDIRECT) {
+			Sophon_Frame *f = bottom->var_env;
+
+			while (f->gc_type != SOPHON_GC_GlobalFrame) {
+				f = f->bottom;
+			}
+
+			var_frame = f;
+			lex_frame = f;
+		} else {
+			var_frame = bottom->var_env;
+			lex_frame = bottom->lex_env;
+		}
 	} else {
+		if (func->flags & SOPHON_FUNC_FL_EVAL) {
+			Sophon_Frame *f = bottom->var_env;
+
+			if (flags & SOPHON_FL_INDIRECT) {
+				while (f->gc_type != SOPHON_GC_GlobalFrame) {
+					f = f->bottom;
+				}
+			}
+
+			thisv = ((Sophon_DeclFrame*)f)->thisv;
+		}
+
 		var_frame = (Sophon_Frame*)sophon_decl_frame_create(vm,
 					bottom->calleev, calleev, thisv, argv, argc);
 		SOPHON_ASSERT(var_frame);
@@ -256,7 +282,8 @@ sophon_stack_pop_frame (Sophon_VM *vm)
 }
 
 Sophon_Result
-sophon_stack_delete_binding (Sophon_VM *vm, Sophon_String *name)
+sophon_stack_delete_binding (Sophon_VM *vm, Sophon_String *name,
+		Sophon_U32 flags)
 {
 	Sophon_Stack *stack;
 	Sophon_Frame *frame;
@@ -273,7 +300,6 @@ sophon_stack_delete_binding (Sophon_VM *vm, Sophon_String *name)
 			case SOPHON_GC_DeclFrame: {
 				Sophon_DeclFrame *df = (Sophon_DeclFrame*)frame;
 				Sophon_HashEntry *ent;
-				Sophon_Value namev;
 
 				if (df->func) {
 					r = sophon_hash_lookup(vm, &df->func->var_hash,
@@ -291,18 +317,29 @@ sophon_stack_delete_binding (Sophon_VM *vm, Sophon_String *name)
 				if (name == vm->arguments_str)
 					return SOPHON_ERR_ACCESS;
 
-				r = sophon_hash_remove(vm, &df->var_hash,
+				if (frame->gc_type == SOPHON_GC_GlobalFrame) {
+					Sophon_Module *mod;
+
+					if (df->func) {
+						mod = df->func->module->base;
+						if (mod != vm->glob_module) {
+							if ((r = sophon_value_delete_prop(vm, mod->globv,
+											SOPHON_VALUE_GC(name),
+											SOPHON_FL_NONE|SOPHON_FL_THROW))
+									!= SOPHON_NONE)
+								return r;
+						}
+					}
+
+					mod = vm->glob_module;
+					return sophon_value_delete_prop(vm, mod->globv,
+							SOPHON_VALUE_GC(name),
+							SOPHON_FL_NONE|SOPHON_FL_THROW);
+				} else {
+					return sophon_hash_remove(vm, &df->var_hash,
 							sophon_direct_key,
 							sophon_direct_equal,
 							(Sophon_Ptr)name);
-				if (r == SOPHON_OK)
-					return SOPHON_OK;
-
-				if ((frame->gc_type == SOPHON_GC_GlobalFrame) &&
-							!SOPHON_VALUE_IS_UNDEFINED(df->thisv)) {
-					sophon_value_set_gc(vm, &namev, (Sophon_GCObject*)name);
-					return sophon_value_delete_prop(vm, df->thisv, namev,
-								SOPHON_FL_NONE);
 				}
 				break;
 			}
@@ -333,7 +370,7 @@ sophon_stack_delete_binding (Sophon_VM *vm, Sophon_String *name)
 
 Sophon_Result
 sophon_stack_get_binding (Sophon_VM *vm, Sophon_String *name,
-			Sophon_Value *getv)
+			Sophon_Value *getv, Sophon_U32 flags)
 {
 	Sophon_Stack *stack;
 	Sophon_Frame *frame;
@@ -380,40 +417,35 @@ sophon_stack_get_binding (Sophon_VM *vm, Sophon_String *name,
 					return SOPHON_OK;
 				}
 
-				r = sophon_hash_lookup(vm, &df->var_hash,
-							sophon_direct_key,
-							sophon_direct_equal,
-							(Sophon_Ptr)name,
-							&ent);
-				if (r == SOPHON_OK) {
-					*getv = (Sophon_Value)ent->value;
-					return SOPHON_OK;
-				}
-
 				if (frame->gc_type == SOPHON_GC_GlobalFrame) {
-					if (df->thisv == vm->glob_module->globv) {
-						if (!SOPHON_VALUE_IS_UNDEFINED(df->thisv))
-							if ((r = sophon_value_get(vm, df->thisv,
+					Sophon_Module *mod;
+
+					if (df->func) {
+						mod = df->func->module->base;
+						if (mod != vm->glob_module) {
+							if ((r = sophon_value_get(vm, mod->globv,
 										SOPHON_VALUE_GC(name),
 										getv,
 										SOPHON_FL_THROW|SOPHON_FL_NONE)) !=
 										SOPHON_NONE)
 								return r;
-					} else {
-						if (!SOPHON_VALUE_IS_UNDEFINED(df->thisv))
-							if ((r = sophon_value_get(vm, df->thisv,
-										SOPHON_VALUE_GC(name),
-										getv, SOPHON_FL_NONE)) !=
-										SOPHON_NONE)
-								return r;
+						}
+					}
 
-						if ((r = sophon_value_get(vm,
-									vm->glob_module->globv,
-									SOPHON_VALUE_GC(name),
-									getv,
-									SOPHON_FL_THROW|SOPHON_FL_NONE)) !=
-									SOPHON_NONE)
-						  return r;
+					mod = vm->glob_module;
+					return sophon_value_get(vm, mod->globv,
+							SOPHON_VALUE_GC(name),
+							getv,
+							SOPHON_FL_THROW|SOPHON_FL_NONE);
+				} else {
+					r = sophon_hash_lookup(vm, &df->var_hash,
+							sophon_direct_key,
+							sophon_direct_equal,
+							(Sophon_Ptr)name,
+							&ent);
+					if (r == SOPHON_OK) {
+						*getv = (Sophon_Value)ent->value;
+						return r;
 					}
 				}
 				break;
@@ -448,7 +480,7 @@ sophon_stack_get_binding (Sophon_VM *vm, Sophon_String *name,
 
 Sophon_Result
 sophon_stack_put_binding (Sophon_VM *vm, Sophon_String *name,
-			Sophon_Value setv)
+			Sophon_Value setv, Sophon_U32 flags)
 {
 	Sophon_Stack *stack;
 	Sophon_Frame *frame;
@@ -467,7 +499,6 @@ sophon_stack_put_binding (Sophon_VM *vm, Sophon_String *name,
 	}
 
 	while (frame) {
-
 		switch (frame->gc_type) {
 			case SOPHON_GC_GlobalFrame:
 			case SOPHON_GC_DeclFrame: {
@@ -509,21 +540,52 @@ sophon_stack_put_binding (Sophon_VM *vm, Sophon_String *name,
 					}
 				}
 
-				r = sophon_hash_lookup(vm, &df->var_hash,
+				if (frame->gc_type == SOPHON_GC_GlobalFrame) {
+					Sophon_Module *mod;
+					Sophon_U32 fl;
+					
+					if (strict && !(flags & SOPHON_FL_FORCE))
+						fl = SOPHON_FL_NONE|SOPHON_FL_THROW;
+					else
+						fl = 0;
+
+					if (df->func) {
+						mod = df->func->module->base;
+						if (mod != vm->glob_module) {
+							r = sophon_value_put(vm, mod->globv,
+									SOPHON_VALUE_GC(name),
+									setv, fl);
+							if (r == SOPHON_NONE) {
+								sophon_throw(vm, vm->ReferenceError,
+										"Unresolved reference");
+								return SOPHON_ERR_THROW;
+							}
+
+							return r;
+						}
+					}
+
+					mod = vm->glob_module;
+					r = sophon_value_put(vm, mod->globv,
+							SOPHON_VALUE_GC(name),
+							setv, fl);
+					if (r == SOPHON_NONE) {
+						sophon_throw(vm, vm->ReferenceError,
+								"Unresolved reference");
+						return SOPHON_ERR_THROW;
+					}
+
+					return r;
+				} else {
+					r = sophon_hash_lookup(vm, &df->var_hash,
 							sophon_direct_key,
 							sophon_direct_equal,
 							(Sophon_Ptr)name,
 							&ent);
-				if (r == SOPHON_OK) {
-					ent->value = (Sophon_Ptr)setv;
-					return SOPHON_OK;
-				}
-
-				if ((frame->gc_type == SOPHON_GC_GlobalFrame) &&
-							!SOPHON_VALUE_IS_UNDEFINED(df->thisv)) {
-					return sophon_value_put(vm, df->thisv,
-								SOPHON_VALUE_GC(name),
-								setv, SOPHON_FL_THROW);
+					if (r == SOPHON_OK) {
+						ent->value = (Sophon_Ptr)setv;
+						return r;
+					}
 				}
 				break;
 			}
@@ -566,12 +628,9 @@ sophon_stack_get_this (Sophon_VM *vm)
 
 	do {
 		switch (frame->gc_type) {
+			case SOPHON_GC_DeclFrame:
 			case SOPHON_GC_GlobalFrame: {
 				return SOPHON_VALUE_UNDEFINED;
-			}
-			case SOPHON_GC_DeclFrame: {
-				Sophon_DeclFrame *df = (Sophon_DeclFrame*)frame;
-				return df->thisv;
 			}
 			case SOPHON_GC_WithFrame: {
 				Sophon_WithFrame *wf = (Sophon_WithFrame*)frame;
@@ -582,5 +641,29 @@ sophon_stack_get_this (Sophon_VM *vm)
 	} while (frame);
 
 	return SOPHON_VALUE_UNDEFINED;
+}
+
+Sophon_Module*
+sophon_stack_get_module (Sophon_VM *vm)
+{
+	Sophon_Frame *frame;
+
+	SOPHON_ASSERT(vm && vm->stack);
+
+	frame = vm->stack->var_env;
+
+	do {
+		switch (frame->gc_type) {
+			case SOPHON_GC_GlobalFrame:
+			case SOPHON_GC_DeclFrame: {
+				Sophon_DeclFrame *df = (Sophon_DeclFrame*)frame;
+				if (df->func)
+					return df->func->module->base;
+			}
+		}
+		frame = frame->bottom;
+	} while (frame);
+
+	return vm->glob_module;
 }
 

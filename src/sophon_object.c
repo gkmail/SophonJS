@@ -45,7 +45,7 @@
 /*Allocate a new property*/
 static Sophon_Property*
 prop_alloc (Sophon_VM *vm, Sophon_Value getv, Sophon_Value setv,
-			Sophon_U8 attrs, Sophon_U8 flags)
+			Sophon_U8 attrs, Sophon_U32 flags)
 {
 	Sophon_Property *prop;
 
@@ -113,7 +113,7 @@ prop_free (Sophon_VM *vm, Sophon_Property *prop)
 static Sophon_Result
 prop_reset (Sophon_VM *vm, Sophon_Property **pp, Sophon_Property *prop,
 			Sophon_Value getv, Sophon_Value setv,
-			Sophon_U8 attrs, Sophon_U8 flags)
+			Sophon_U8 attrs, Sophon_U32 flags)
 {
 	Sophon_AccessorProperty *aprop = (Sophon_AccessorProperty*)prop;
 	Sophon_Property *nprop;
@@ -157,6 +157,13 @@ prop_reset (Sophon_VM *vm, Sophon_Property **pp, Sophon_Property *prop,
 	}
 
 	/*Reset the property*/
+	if (!(flags & SOPHON_FL_HAVE_CONFIGURABLE))
+		attrs |= prop->attrs & SOPHON_PROP_ATTR_CONFIGURABLE;
+	if (!(flags & SOPHON_FL_HAVE_ENUMERABLE))
+		attrs |= prop->attrs & SOPHON_PROP_ATTR_ENUMERABLE;
+
+	flags |= SOPHON_FL_HAVE_CONFIGURABLE|SOPHON_FL_HAVE_ENUMERABLE;
+
 	if (accessor !=	(prop->attrs & SOPHON_PROP_ATTR_ACCESSOR)) {
 		nprop = prop_alloc(vm, getv, setv, attrs, flags);
 
@@ -166,15 +173,27 @@ prop_reset (Sophon_VM *vm, Sophon_Property **pp, Sophon_Property *prop,
 
 		prop_free(vm, prop);
 	} else {
-		prop->attrs &= ~mask;
-		prop->attrs |= mask & attrs;
+		if (accessor) {
+			if (!(flags & SOPHON_FL_HAVE_GET))
+				getv = aprop->getv;
+			if (!(flags & SOPHON_FL_HAVE_SET))
+				setv = aprop->setv;
 
-		if (flags & SOPHON_FL_HAVE_VALUE)
-			prop->value = getv;
-		if (flags & SOPHON_FL_HAVE_GET)
+			attrs |= SOPHON_PROP_ATTR_ACCESSOR;
+
 			aprop->getv = getv;
-		if (flags & SOPHON_FL_HAVE_SET)
 			aprop->setv = setv;
+		} else {
+			if (!(flags & SOPHON_FL_HAVE_VALUE))
+				getv = prop->value;
+
+			if (!(flags & SOPHON_FL_HAVE_WRITABLE))
+				attrs |= prop->attrs & SOPHON_PROP_ATTR_WRITABLE;
+
+			prop->value = getv;
+		}
+
+		prop->attrs = attrs;
 	}
 
 	return SOPHON_OK;
@@ -359,7 +378,9 @@ sophon_value_prop_desc (Sophon_VM *vm, Sophon_Value v,
 	}
 
 	/*Lookup property hash table*/
-	obj = sophon_value_get_class(vm, v);
+	if (!(obj = sophon_value_get_class(vm, v))) {
+		return SOPHON_NONE;
+	}
 
 	if ((r = sophon_value_to_string(vm, namev, &name)) != SOPHON_OK)
 		return r;
@@ -449,9 +470,13 @@ sophon_value_define_prop (Sophon_VM *vm, Sophon_Value v,
 
 				r = prop_reset(vm, pp, prop,
 							getv, setv, attrs, flags);
-				if ((r != SOPHON_OK) && (flags & SOPHON_FL_THROW))
-					sophon_throw(vm, vm->TypeError,
-							"Property is not configurable");
+				if (r != SOPHON_OK) {
+					if (flags & SOPHON_FL_THROW)
+						sophon_throw(vm, vm->TypeError,
+								"Property is not configurable");
+					else
+						r = SOPHON_OK;
+				}
 
 				return r;
 			}
@@ -463,10 +488,15 @@ sophon_value_define_prop (Sophon_VM *vm, Sophon_Value v,
 
 	if (!(obj->gc_flags & SOPHON_GC_FL_EXTENSIBLE) &&
 				!(flags & SOPHON_FL_FORCE)) {
-		if (flags & SOPHON_FL_THROW)
+		if (flags & SOPHON_FL_THROW) {
 			sophon_throw(vm, vm->TypeError,
 					"Object is not extensible");
-		return SOPHON_ERR_RDONLY;
+			r = SOPHON_ERR_RDONLY;
+		} else {
+			r = SOPHON_OK;
+		}
+
+		return r;
 	}
 
 	/*Resize the property buffer size*/
@@ -554,17 +584,16 @@ sophon_value_delete_prop (Sophon_VM *vm, Sophon_Value v,
 
 	while (prop) {
 		if (prop->name == name) {
-			*pp = prop->next;
-
 			if (!(prop->attrs & SOPHON_PROP_ATTR_CONFIGURABLE)) {
 				if (opts & SOPHON_FL_THROW) {
 					sophon_throw(vm, vm->TypeError,
 							"Property is not configurable");
 				}
-
+				
 				return SOPHON_ERR_ACCESS;
 			}
-
+			
+			*pp = prop->next;
 			obj->prop_count--;
 			prop_free(vm, prop);
 			return SOPHON_OK;
@@ -666,6 +695,7 @@ sophon_value_put (Sophon_VM *vm, Sophon_Value thisv,
 	Sophon_Result r;
 	Sophon_Array *arr;
 	Sophon_U32 id;
+	Sophon_Bool own;
 
 	SOPHON_ASSERT(vm);
 
@@ -685,6 +715,7 @@ sophon_value_put (Sophon_VM *vm, Sophon_Value thisv,
 		return r;
 
 	name = sophon_string_intern(vm, name);
+	own = SOPHON_TRUE;
 
 	while (1) {
 		if (obj->prop_count) {
@@ -701,22 +732,30 @@ sophon_value_put (Sophon_VM *vm, Sophon_Value thisv,
 						Sophon_Value retv;
 
 						if (SOPHON_VALUE_IS_UNDEFINED(aprop->setv)) {
-							if (flags & SOPHON_FL_THROW)
+							if (flags & SOPHON_FL_THROW) {
 								sophon_throw(vm, vm->TypeError,
 										"Set function is undefined");
-							return SOPHON_ERR_RDONLY;
+								return SOPHON_ERR_RDONLY;
+							} else {
+								return SOPHON_OK;
+							}
 						}
 
 						return sophon_value_call(vm, aprop->setv, thisv,
 									&setv, 1, &retv, 0);
 					} else {
-						if (!(prop->attrs & SOPHON_PROP_ATTR_WRITABLE) &&
-									!sophon_value_same(vm, prop->value, setv)) {
-							if (flags & SOPHON_FL_THROW)
+						if (!(prop->attrs & SOPHON_PROP_ATTR_WRITABLE)) {
+							if (flags & SOPHON_FL_THROW) {
 								sophon_throw(vm, vm->TypeError,
 										"Property is not writable");
-							return SOPHON_ERR_RDONLY;
+								return SOPHON_ERR_RDONLY;
+							} else {
+								return SOPHON_OK;
+							}
 						}
+
+						if (!own)
+							goto add;
 
 						prop->value = setv;
 						return SOPHON_OK;
@@ -727,16 +766,15 @@ sophon_value_put (Sophon_VM *vm, Sophon_Value thisv,
 			}
 		}
 
-		if (flags & SOPHON_FL_OWN)
-			break;
-
 		if (SOPHON_VALUE_IS_NULL(obj->protov))
 			break;
 
 		if (sophon_value_to_object(vm, obj->protov, &obj) != SOPHON_OK)
 			break;
-	}
 
+		own = SOPHON_FALSE;
+	}
+add:
 	if (flags & SOPHON_FL_NONE)
 		return SOPHON_NONE;
 

@@ -47,7 +47,7 @@
 #include "sophon_parser_internal.h"
 #include "sophon_ins_internal.h"
 
-/*#define DUMP_INS*/
+#define DUMP_INS
 
 static const char*
 ins_tags[] = {
@@ -280,7 +280,8 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 	SOPHON_MACRO_END
 
 #define I_store_run\
-	vm->retv = STACK(0);
+	if (CURR_FUNC->flags & SOPHON_FUNC_FL_EVAL)\
+		TOP->retv = STACK(0);
 #define I_undef_run\
 	STACK(-1) = SOPHON_VALUE_UNDEFINED;
 #define I_null_run\
@@ -429,7 +430,7 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 	Sophon_U32 flags = (CURR_FUNC->flags & SOPHON_FUNC_FL_STRICT) ?\
 				SOPHON_FL_THROW : 0;\
 	r = sophon_value_delete_prop(vm, STACK(1), STACK(0), flags);\
-	if (flags) {\
+	if (flags && (r != SOPHON_OK) && (r != SOPHON_ERR_ACCESS)) {\
 		ret = SOPHON_ERR_THROW;\
 		goto exception;\
 	}\
@@ -443,16 +444,17 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 					"Cannot delete binding in strict mode");\
 		THROW;\
 	}\
-	r = sophon_stack_delete_binding(vm, name);\
+	r = sophon_stack_delete_binding(vm, name, 0);\
 	b = (r == SOPHON_OK) ? SOPHON_TRUE : SOPHON_FALSE;\
 	sophon_value_set_bool(vm, &STACK(-1), b);
 #define I_typeof_run\
 	Sophon_String *str = sophon_value_typeof(vm, STACK(0));\
 	sophon_value_set_gc(vm, &STACK(0), (Sophon_GCObject*)str);
 #define I_this_run\
-	if (sophon_value_is_null(VAR_ENV->thisv) ||\
-				sophon_value_is_undefined(VAR_ENV->thisv))\
-		STACK(-1) = vm->glob_module->globv;\
+	if (!sophon_strict(vm) &&\
+				(sophon_value_is_null(VAR_ENV->thisv) ||\
+				sophon_value_is_undefined(VAR_ENV->thisv)))\
+		STACK(-1) = CURR_MODULE->base->globv;\
 	else\
 		STACK(-1) = VAR_ENV->thisv;
 #define I_const_run\
@@ -467,8 +469,8 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 		THROW;\
 	}
 #define I_put_run\
-	if (sophon_value_put(vm, STACK(2), STACK(1), STACK(0),\
-					sophon_strict(vm) ? SOPHON_FL_THROW : 0)\
+	Sophon_U32 flags = sophon_strict(vm) ? SOPHON_FL_THROW : 0;\
+	if ((r = sophon_value_put(vm, STACK(2), STACK(1), STACK(0), flags))\
 				!= SOPHON_OK) {\
 		THROW;\
 	}
@@ -483,6 +485,14 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 	}\
 	if (TOP != vm->stack) {\
 		UPDATE();\
+	}\
+	break;
+#define I_eval_run\
+	IP += 2;\
+	SP -= argc - 1;\
+	r = sophon_eval_string(vm, STACK(0), &STACK(0), 0);\
+	if (r != SOPHON_OK) {\
+		THROW;\
 	}\
 	break;
 #define I_this_call_run\
@@ -522,7 +532,7 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 	sophon_gc_set_nb_count(vm, gc_level);\
 	THROW;
 #define I_return_run\
-	vm->retv = STACK(0);\
+	TOP->retv = STACK(0);\
 	sophon_gc_set_nb_count(vm, gc_level);\
 	ret = SOPHON_OK;\
 	goto exception;
@@ -553,28 +563,36 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 	}\
 	break;
 #define I_for_next_run\
-	return SOPHON_OK;
+	return SOPHON_NONE;
 #define I_try_begin_run\
-	sophon_value_set_int(vm, &STACK(-2), TP);\
-	sophon_value_set_int(vm, &STACK(-1), pos);\
+	sophon_value_set_int(vm, &STACK(-3), TP);\
+	sophon_value_set_int(vm, &STACK(-2), pos);\
+	sophon_value_set_cptr(vm, &STACK(-1), TOP->lex_env);\
 	TP = SP;
 #define I_try_end_run\
 	TP = SOPHON_VALUE_GET_INT(STACK(0));\
-	SP -= 2;\
+	TOP->lex_env = SOPHON_VALUE_GET_CPTR(STACK(2));\
+	SP -= 3;\
 	IP = pos;\
 	break;
 #define I_prop_set_run\
 	if (sophon_value_define_prop(vm, STACK(2), STACK(1),\
 					SOPHON_VALUE_UNDEFINED,\
 					STACK(0),\
-					0, SOPHON_FL_HAVE_SET) != SOPHON_OK) {\
+					SOPHON_PROP_ATTR_CONFIGURABLE,\
+					SOPHON_FL_HAVE_CONFIGURABLE|SOPHON_FL_HAVE_SET|\
+					SOPHON_FL_THROW)\
+			!= SOPHON_OK) {\
 		THROW;\
 	}
 #define I_prop_get_run\
 	if (sophon_value_define_prop(vm, STACK(2), STACK(1),\
 					STACK(0),\
 					SOPHON_VALUE_UNDEFINED,\
-					0, SOPHON_FL_HAVE_GET) != SOPHON_OK) {\
+					SOPHON_PROP_ATTR_CONFIGURABLE,\
+					SOPHON_FL_HAVE_CONFIGURABLE|SOPHON_FL_HAVE_GET|\
+					SOPHON_FL_THROW)\
+			!= SOPHON_OK) {\
 		THROW;\
 	}
 #define I_dup_run\
@@ -603,16 +621,16 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 #define I_debugger_run
 #define I_get_bind_run\
 	Sophon_String *name = SOPHON_VALUE_GET_STRING(CONST(id));\
-	r = sophon_stack_get_binding(vm, name, &STACK(-1));\
+	r = sophon_stack_get_binding(vm, name, &STACK(-1), 0);\
 	if (r == SOPHON_NONE) {\
-		sophon_throw(vm, vm->ReferenceError, "binding has not been defined");\
+		sophon_throw(vm, vm->ReferenceError, "Binding has not been defined");\
 		THROW;\
 	} else if (r != SOPHON_OK) {\
 		THROW;\
 	}
 #define I_get_bind_nt_run\
 	Sophon_String *name = SOPHON_VALUE_GET_STRING(CONST(id));\
-	r = sophon_stack_get_binding(vm, name, &STACK(-1));\
+	r = sophon_stack_get_binding(vm, name, &STACK(-1), 0);\
 	if (r == SOPHON_NONE) {\
 		sophon_value_set_undefined(vm, &STACK(-1));\
 	} else if (r != SOPHON_OK) {\
@@ -620,7 +638,13 @@ sophon_ins_get_line (Sophon_VM *vm, Sophon_Function *func,
 	}
 #define I_put_bind_run\
 	Sophon_String *name = SOPHON_VALUE_GET_STRING(CONST(id));\
-	if (sophon_stack_put_binding(vm, name, STACK(0)) != SOPHON_OK) {\
+	if (sophon_stack_put_binding(vm, name, STACK(0), 0) != SOPHON_OK) {\
+		THROW;\
+	}
+#define I_put_fbind_run\
+	Sophon_String *name = SOPHON_VALUE_GET_STRING(CONST(id));\
+	if (sophon_stack_put_binding(vm, name, STACK(0), SOPHON_FL_FORCE)\
+			!= SOPHON_OK) {\
 		THROW;\
 	}
 #define I_get_var_run\
@@ -634,7 +658,6 @@ Sophon_Result
 sophon_ins_run (Sophon_VM *vm)
 {
 	Sophon_Stack *enter_stack;
-	Sophon_Stack *tmp_stack;
 	Sophon_Stack *top_stack;
 	Sophon_DeclFrame *var_env;
 	Sophon_Function *curr_func;
@@ -732,9 +755,11 @@ exception:
 			return ret;
 
 		SP = TP;
-		TP = SOPHON_VALUE_GET_INT(STACK(-2));
-		IP = SOPHON_VALUE_GET_INT(STACK(-1));
-		ret = SOPHON_NONE;
+		TP = SOPHON_VALUE_GET_INT(STACK(-3));
+		IP = SOPHON_VALUE_GET_INT(STACK(-2));
+		TOP->lex_env = SOPHON_VALUE_GET_CPTR(STACK(-1));
+		if (ret < 0)
+			ret = SOPHON_NONE;
 		goto again;
 	}
 
@@ -742,25 +767,19 @@ exception:
 		return ret;
 	}
 
-	tmp_stack = top_stack;
+	if (enter_stack != top_stack) {
+		Sophon_Value rv = TOP->retv;
 
-	sophon_stack_pop(vm);
-	if (tmp_stack != enter_stack) {
+		sophon_stack_pop(vm);
 		UPDATE();
+
 		if (ret >= 0) {
 			ret = SOPHON_NONE;
-			STACK(0) = vm->retv;
+			STACK(0) = rv;
 			goto again;
 		} else {
 			goto exception;
 		}
-	}
-
-	if (ret == SOPHON_NONE) {
-		if (!(CURR_FUNC->flags & SOPHON_FUNC_FL_EVAL)) {
-			vm->retv = SOPHON_VALUE_UNDEFINED;
-		}
-		ret = SOPHON_OK;
 	}
 
 	return ret;
